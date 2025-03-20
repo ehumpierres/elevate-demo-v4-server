@@ -1,0 +1,4 @@
+# Metrics definitions
+
+- MRR stands for monthly recurring revenue, but given the data in our table FINANCIAL_DATA, assume that MRR means the Income within a month, so any calculations related to MRR should use Income as the metric. 
+- Churn stands for lost income, it is basically how many dollars we have lost due to cancelled accounts or downgrades. Since our FINANCIAL_DATA table does not contain churn explicitly, you can assume that when an account losses income from one month to another, that is churn. And if you divide the lost dollars of Income by the total Income at the beginning of a month (or the end of the prior month) then that is the churn rate and can be expressed as a percentage.
