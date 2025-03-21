@@ -1,0 +1,56 @@
+"""
+Module to handle interactions with the LLM API (OpenRouter).
+"""
+import httpx
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config.config import OPENROUTER_API_KEY, OPENROUTER_API_URL, OPENROUTER_MODEL, API_TIMEOUT
+from config.persona import get_system_prompt
+
+class LlmApi:
+    """Handles interactions with the LLM API."""
+    
+    def __init__(self):
+        """Initialize the API connection."""
+        self.headers = {
+            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+            "Content-Type": "application/json"
+        }
+    
+    def generate_response(self, user_message, user_memories, companion_memories, recent_conversation):
+        """
+        Generate a response from the LLM.
+        
+        Args:
+            user_message: The user's message
+            user_memories: Memories related to the user
+            companion_memories: Memories from the companion
+            recent_conversation: Recent conversation history
+            
+        Returns:
+            The generated response from the LLM
+        """
+        # Create the system prompt with all context
+        system_prompt = get_system_prompt(user_memories, companion_memories, recent_conversation)
+        
+        # Prepare the payload
+        payload = {
+            "model": OPENROUTER_MODEL,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message}
+            ]
+        }
+        
+        # Make the API call
+        response = httpx.post(
+            OPENROUTER_API_URL,
+            headers=self.headers,
+            json=payload,
+            timeout=API_TIMEOUT
+        )
+        
+        response.raise_for_status()
+        result = response.json()
+        return result["choices"][0]["message"]["content"] 
