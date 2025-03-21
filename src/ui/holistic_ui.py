@@ -4,6 +4,8 @@ import numpy as np
 import time
 import sys
 import os
+import re
+import traceback
 
 # Add the project root to the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
@@ -17,6 +19,28 @@ from src.ui.vanna_calls import (
     run_sql_cached,
     is_sql_valid_cached
 )
+
+# Custom exception handling to override Streamlit's default error display
+def handle_exception(func):
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            error_msg = str(e)
+            if "sql" in error_msg.lower() or "query" in error_msg.lower():
+                # SQL-related error
+                if "syntax" in error_msg.lower() or "compilation" in error_msg.lower():
+                    st.info("There was an error compiling the SQL. The Data Analyst couldn't answer this question.")
+                else:
+                    st.info("The Data Analyst couldn't process this query.")
+            else:
+                # Non-SQL error - still use info box but with general message
+                st.info(f"An issue occurred: {error_msg}")
+            
+            # Optionally log the full traceback for debugging
+            traceback.print_exc()
+            return None
+    return wrapper
 
 # Initialize session state variables
 if "messages" not in st.session_state:
@@ -36,10 +60,36 @@ if "loading" not in st.session_state:
 
 # Page configuration
 st.set_page_config(
-    page_title="Mem0 AI Companion",
+    page_title="Elevate AI Companion",
     page_icon="🧠",
     layout="wide"
 )
+
+# Function to format revenue text to ensure proper spacing
+def fix_revenue_text_spacing(text):
+    """Fix spacing issues in revenue text formatting"""
+    if not text:
+        return text
+    
+    # Fix "KinMonth" pattern (e.g., "747KinJanuary" -> "747K in January")
+    text = re.sub(r'(\d+[KMB])in([A-Za-z]+)', r'\1 in \2', text)
+    
+    # Fix "K(Month)" pattern (e.g., "747K(Jan)" -> "747K (Jan)")
+    text = re.sub(r'(\d+[KMB])\(([A-Za-z]+)\)', r'\1 (\2)', text)
+    
+    # Fix "Kto" pattern (e.g., "747Kto886K" -> "747K to 886K")
+    text = re.sub(r'(\d+[KMB])to(\d+[KMB])', r'\1 to \2', text)
+    
+    # Fix "Kby" pattern (e.g., "886Kby December" -> "886K by December")
+    text = re.sub(r'(\d+[KMB])by([A-Za-z]+)', r'\1 by \2', text)
+    
+    # Fix no space after "→" symbol
+    text = re.sub(r'→([A-Za-z])', r'→ \1', text)
+    
+    # Fix any missing spaces between parentheses and words
+    text = re.sub(r'\)([A-Za-z])', r') \1', text)
+    
+    return text
 
 # Function to format numeric values in DataFrames
 def format_numeric_values(df):
@@ -91,6 +141,12 @@ def create_visualization(df):
     st.subheader("Data Visualization")
     st.bar_chart(df, x=x_col, y=y_col)
 
+# Apply our exception handler to the run_sql_cached function to handle errors gracefully
+@handle_exception
+def safe_run_sql(sql_query, question):
+    """A wrapper around run_sql_cached that handles exceptions gracefully"""
+    return run_sql_cached(sql=sql_query)
+
 # Function to process user input with data analysis if enabled
 def process_input(user_input):
     st.session_state.loading = True
@@ -98,27 +154,36 @@ def process_input(user_input):
     # Step 1: Check if data analysis is enabled
     data_result = None
     sql_query = None
+    sql_error = None
     
     if st.session_state.data_analyst_enabled:
         with st.spinner("Data Analyst Agent is analyzing..."):
-            # Generate SQL from the user's question
-            sql_query = generate_sql_cached(question=user_input)
-            
-            # Execute the SQL if valid
-            if sql_query and is_sql_valid_cached(sql=sql_query):
-                try:
-                    # Run the SQL query
-                    data_result = run_sql_cached(sql=sql_query)
-                    
-                    # Format the DataFrame if results were returned
-                    if data_result is not None and not data_result.empty:
-                        # Set row indices to start from 1
-                        data_result.index = np.arange(1, len(data_result) + 1)
-                except Exception as e:
-                    st.error(f"Error executing SQL: {str(e)}")
+            try:
+                # Generate SQL from the user's question
+                sql_query = generate_sql_cached(question=user_input)
+                
+                # Execute the SQL if valid
+                if sql_query and is_sql_valid_cached(sql=sql_query):
+                    try:
+                        # Run the SQL query with our safe wrapper
+                        data_result = safe_run_sql(sql_query, user_input)
+                        
+                        # Format the DataFrame if results were returned
+                        if data_result is not None and not data_result.empty:
+                            # Set row indices to start from 1
+                            data_result.index = np.arange(1, len(data_result) + 1)
+                    except Exception as e:
+                        # This shouldn't be hit due to our wrapper, but just in case
+                        sql_error = "There was an error executing the SQL. The Data Analyst couldn't answer this question."
+                else:
+                    # SQL not valid or not generated
+                    sql_error = "SQL query not applicable for this question"
+            except Exception as e:
+                # Catch any other errors in the data analysis process
+                sql_error = "The Data Analyst couldn't process this query."
     
     # Step 2: Process the user input through the Mem0 agent
-    with st.spinner("Mem0 Agent is thinking..."):
+    with st.spinner("Revenue Architecture AI Agent is thinking..."):
         # If we have data results, include them in the context for the companion
         if data_result is not None:
             # For now, we'll convert the DataFrame to markdown to include in the prompt
@@ -129,6 +194,9 @@ def process_input(user_input):
         else:
             # Process without data context
             response = st.session_state.companion.process_message(user_input)
+        
+        # Fix spacing issues in revenue text formatting
+        response = fix_revenue_text_spacing(response)
     
     # Add the messages to the conversation history
     st.session_state.messages.append({"role": "user", "content": user_input})
@@ -139,11 +207,15 @@ def process_input(user_input):
         st.session_state.messages[-1]["data"] = data_result
         st.session_state.messages[-1]["sql"] = sql_query
     
+    # If there was a SQL error, store it in the message for display
+    if sql_error:
+        st.session_state.messages[-1]["sql_error"] = sql_error
+    
     st.session_state.loading = False
 
 # Sidebar for user identification and settings
 with st.sidebar:
-    st.title("Mem0 AI Companion")
+    st.title("Elevate AI Companion")
     
     # User identification
     if st.session_state.user_id is None:
@@ -165,13 +237,27 @@ with st.sidebar:
 # Main content area - only show if user is identified
 if st.session_state.user_id:
     # Display chat header
-    st.title("Mem0 AI Companion")
-    st.caption("An intelligent assistant with memory and data analysis capabilities")
+    st.title("Elevate AI Companion")
+    st.caption("An intelligent business strategist with memory and data analysis capabilities")
     
     # Display chat messages
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
-            st.write(message["content"])
+            # Apply fix_revenue_text_spacing to all displayed messages to ensure proper formatting
+            formatted_content = fix_revenue_text_spacing(message["content"])
+            st.write(formatted_content)
+            
+            # If there was a SQL error, display it as an info message with a friendly message
+            if "sql_error" in message:
+                # Extract the error type for more specific messages
+                error_msg = message["sql_error"]
+                
+                if "compilation error" in error_msg.lower() or "syntax error" in error_msg.lower():
+                    st.info("There was an error compiling the SQL. The Data Analyst couldn't answer this question.")
+                elif "execution error" in error_msg.lower():
+                    st.info("There was an error executing the SQL. The Data Analyst couldn't answer this question.")
+                else:
+                    st.info("The Data Analyst couldn't answer this question with SQL.")
             
             # If this message has data attached, display it
             if "data" in message and message["data"] is not None:
@@ -214,5 +300,5 @@ if st.session_state.user_id:
         st.markdown("![Loading](https://i.gifer.com/ZKZx.gif)")
 else:
     # Welcome message when no user is identified
-    st.title("Welcome to Mem0 AI Companion")
+    st.title("Welcome to Elevate AI Companion")
     st.write("Please enter your username in the sidebar to get started.") 
