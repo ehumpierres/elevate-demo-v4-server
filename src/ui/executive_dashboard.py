@@ -273,15 +273,36 @@ st.markdown("</div>", unsafe_allow_html=True)
 
 # Dashboard tabs
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    "Recommendations",
     "Component Performance", 
-    "Key Metrics", 
-    "Recommendations", 
+    "Core Metrics", 
     "Sales Funnel Metrics", 
     "Revenue Quality Analysis", 
     "Call Recording Analysis"
 ])
 
 with tab1:
+    st.markdown("<h3>Key Recommendations</h3>", unsafe_allow_html=True)
+    
+    for i, rec in enumerate(recommendations):
+        st.markdown(f"""
+        <div class="card">
+            <h4>{i+1}. {rec["title"]}</h4>
+            <ul>
+                {"".join([f"<li>{detail}</li>" for detail in rec["details"]])}
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Improvement focus
+    st.markdown(f"""
+    <div class="card">
+        <h4>Improvement Focus</h4>
+        <p>Priority on improving CRM data quality and consistency to enable more accurate segmentation and pipeline analysis in future reports</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+with tab2:
     # Left column: Component overview table
     st.markdown("<h3>Performance Components</h3>", unsafe_allow_html=True)
     
@@ -326,7 +347,7 @@ with tab1:
             </div>
             """, unsafe_allow_html=True)
 
-with tab2:
+with tab3:
     st.markdown("<h3>Core Metrics Summary</h3>", unsafe_allow_html=True)
     
     # Core metrics table
@@ -464,27 +485,6 @@ with tab2:
             </ul>
         </div>
         """, unsafe_allow_html=True)
-
-with tab3:
-    st.markdown("<h3>Key Recommendations</h3>", unsafe_allow_html=True)
-    
-    for i, rec in enumerate(recommendations):
-        st.markdown(f"""
-        <div class="card">
-            <h4>{i+1}. {rec["title"]}</h4>
-            <ul>
-                {"".join([f"<li>{detail}</li>" for detail in rec["details"]])}
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    # Improvement focus
-    st.markdown(f"""
-    <div class="card">
-        <h4>Improvement Focus</h4>
-        <p>Priority on improving CRM data quality and consistency to enable more accurate segmentation and pipeline analysis in future reports</p>
-    </div>
-    """, unsafe_allow_html=True)
 
 with tab4:
     st.markdown("<h3>Sales Funnel Metrics</h3>", unsafe_allow_html=True)
