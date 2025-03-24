@@ -1,0 +1,5 @@
+For initial context, Nestani is a six-year-old SaaS company that has experienced solid growth, recently reaching nearly $10 million in annual recurring revenue (ARR), calculated as monthly revenue or Income multiplied by 12. The company provides B2B productivity software across multiple industry verticals and serves three distinct customer size segments. It operates on a month-to-month subscription model and offers volume-based discounts.
+
+Recently, a relatively new CEO set an ambitious goal: achieving 50% revenue growth in 2024. While the company has been growing steadily at around 30% annually, other senior leaders—such as the heads of Sales and Customer Success—have raised concerns about declining close rates and low customer retention, as reflected in revenue churn metrics.
+
+The central challenge now facing the leadership team is how to de-risk the path to that 50% growth target over the next 6 to 12 months—or at least ensure the company is on track to meet it. Nestani has access to key data assets, including revenue and sales performance metrics, as well as customer support ticket data, which can inform the necessary analysis and action planning.
