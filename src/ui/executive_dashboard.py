@@ -144,9 +144,18 @@ metrics_data = {
     "Confidence": ["High", "High", "Medium", "Medium", "High", "Medium", "High"]
 }
 
+# GTM Systems Health Scores data
+gtm_health_scores = {
+    "Component": ["Revenue Quality", "Efficiency", "Unit Economics", "Customer Mix"],
+    "Score": [7.6, 6.8, 7.3, 5.5],
+    "MaxScore": [10, 10, 10, 10],
+    "Color": ["#e76f51", "#4682b4", "#2a9d8f", "#8d67ab"]
+}
+
 # Convert to DataFrames
 df_components = pd.DataFrame(component_data)
 df_metrics = pd.DataFrame(metrics_data)
+df_gtm_health = pd.DataFrame(gtm_health_scores)
 
 # Create recommendations data
 recommendations = [
@@ -234,13 +243,73 @@ st.markdown("### Revenue Performance & Growth Analysis")
 st.markdown("</div>", unsafe_allow_html=True)
 
 # Dashboard tabs
-tab1, tab2, tab3 = st.tabs([
+tab1, tab2, tab3, tab4 = st.tabs([
+    "GTM Systems Health Scores",
     "Recommendations",
     "Component Performance", 
     "Core Metrics"
 ])
 
 with tab1:
+    st.markdown("<h3>GTM System Health Scores</h3>", unsafe_allow_html=True)
+    
+    # Create horizontal bar chart for GTM health scores
+    fig = go.Figure()
+    
+    # Add bars
+    for i, row in df_gtm_health.iterrows():
+        fig.add_trace(go.Bar(
+            y=[row["Component"]],  # Use as y for horizontal orientation
+            x=[row["Score"]],      # Use as x for horizontal orientation
+            orientation='h',       # Horizontal bars
+            marker_color=row["Color"],
+            name=row["Component"],
+            text=[f"{row['Score']}/10"],
+            textposition='inside',
+            insidetextanchor='middle',
+            width=0.6
+        ))
+    
+    # Update layout
+    fig.update_layout(
+        title="GTM System Health Scores",
+        xaxis_title="Score (1-10)",
+        yaxis=dict(
+            title="",
+            categoryorder='array',
+            categoryarray=df_gtm_health["Component"].tolist()
+        ),
+        showlegend=False,
+        height=400,
+        margin=dict(t=30, b=10, l=10, r=10),
+        xaxis=dict(
+            range=[0, 10],
+            dtick=2,
+            gridcolor='lightgray'
+        ),
+        plot_bgcolor='white'
+    )
+    
+    # Add grid lines
+    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
+    
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # Explanation text
+    st.markdown("""
+    <div class="card">
+        <h4>System Health Assessment</h4>
+        <p>The GTM System Health Scores measure the operational health of key go-to-market systems. Scores are calculated based on both quantitative metrics and qualitative assessments from key stakeholders.</p>
+        <ul>
+            <li><strong>Revenue Quality (7.6/10):</strong> Evaluates the composition and sustainability of revenue streams.</li>
+            <li><strong>Efficiency (6.8/10):</strong> Measures resource utilization and process effectiveness across sales and marketing.</li>
+            <li><strong>Unit Economics (7.3/10):</strong> Assesses profitability at the customer and segment level.</li>
+            <li><strong>Customer Mix (5.5/10):</strong> Evaluates customer segment distribution against strategic targets.</li>
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
+
+with tab2:
     st.markdown("<h3>Key Recommendations</h3>", unsafe_allow_html=True)
     
     for i, rec in enumerate(recommendations):
@@ -261,7 +330,7 @@ with tab1:
     </div>
     """, unsafe_allow_html=True)
 
-with tab2:
+with tab3:
     # Left column: Component overview table
     st.markdown("<h3>Performance Components</h3>", unsafe_allow_html=True)
     
@@ -306,7 +375,7 @@ with tab2:
             </div>
             """, unsafe_allow_html=True)
 
-with tab3:
+with tab4:
     st.markdown("<h3>Core Metrics Summary</h3>", unsafe_allow_html=True)
     
     # Core metrics table

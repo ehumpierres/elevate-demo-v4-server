@@ -183,7 +183,7 @@ def process_input(user_input):
                 sql_error = "The Data Analyst couldn't process this query."
     
     # Step 2: Process the user input through the Mem0 agent
-    with st.spinner("Revenue Architecture AI Agent is thinking..."):
+    with st.spinner("Business Architecture AI Agent is thinking..."):
         # If we have data results, include them in the context for the companion
         if data_result is not None:
             # For now, we'll convert the DataFrame to markdown to include in the prompt
