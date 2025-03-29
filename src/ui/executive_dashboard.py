@@ -272,13 +272,14 @@ st.markdown("### Revenue Performance & Growth Analysis")
 st.markdown("</div>", unsafe_allow_html=True)
 
 # Dashboard tabs
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+tab1, tab2, tab3 = st.tabs([
     "Recommendations",
     "Component Performance", 
     "Core Metrics", 
-    "Sales Funnel Metrics", 
-    "Revenue Quality Analysis", 
-    "Call Recording Analysis"
+    # Commented out tabs - will be added back later
+    # "Sales Funnel Metrics", 
+    # "Revenue Quality Analysis", 
+    # "Call Recording Analysis"
 ])
 
 with tab1:
@@ -486,79 +487,6 @@ with tab3:
         </div>
         """, unsafe_allow_html=True)
 
-with tab4:
-    st.markdown("<h3>Sales Funnel Metrics</h3>", unsafe_allow_html=True)
-    
-    # Sales funnel metrics table
-    table_html = "<div class='table-container'><table>"
-    table_html += "<tr><th>Funnel Stage</th><th>Conversion Rate</th><th>Trend</th><th>Benchmark</th><th>Confidence</th></tr>"
-    
-    for i, row in df_sales_funnel.iterrows():
-        trend_value = row["Trend"]
-        trend_unit = row["Trend_Unit"]
-        trend_formatted = format_trend(trend_value) + f" {trend_unit}"
-        table_html += f"<tr><td>{row['Funnel Stage']}</td><td>{row['Conversion Rate']}</td><td>{trend_formatted}</td><td>{row['Benchmark']}</td><td>{format_confidence(row['Confidence'])}</td></tr>"
-    
-    table_html += "</table></div>"
-    st.markdown(table_html, unsafe_allow_html=True)
-
-with tab5:
-    st.markdown("<h3>Revenue Quality Analysis</h3>", unsafe_allow_html=True)
-    
-    # Revenue quality analysis table
-    table_html = "<div class='table-container'><table>"
-    table_html += "<tr><th>Revenue Type</th><th>% of Total</th><th>Trend</th><th>Benchmark</th><th>Confidence</th></tr>"
-    
-    for i, row in df_revenue_quality.iterrows():
-        trend_formatted = format_trend(row["Trend"]) + " %"
-        table_html += f"<tr><td>{row['Revenue Type']}</td><td>{row['% of Total']}</td><td>{trend_formatted}</td><td>{row['Benchmark']}</td><td>{format_confidence(row['Confidence'])}</td></tr>"
-    
-    table_html += "</table></div>"
-    st.markdown(table_html, unsafe_allow_html=True)
-    
-    # Note at the bottom
-    st.markdown("<p><i>Note: Detailed segmentation by customer type not available with current data quality</i></p>", unsafe_allow_html=True)
-
-with tab6:
-    st.markdown("<h3>Call Recording Analysis</h3>", unsafe_allow_html=True)
-    st.markdown("<p>Based on analysis of 124 sales and customer calls:</p>", unsafe_allow_html=True)
-    
-    # Top product features
-    st.markdown(f"""
-    <div class="card">
-        <h4>Top mentioned product features (<span class="confidence-high">● High confidence</span>):</h4>
-        <ul>
-            <li>Collaboration tools (68% of calls)</li>
-            <li>Reporting functionality (52% of calls)</li>
-            <li>Integration capabilities (47% of calls)</li>
-        </ul>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Common objections
-    st.markdown(f"""
-    <div class="card">
-        <h4>Common objections (<span class="confidence-medium">● Medium confidence</span>):</h4>
-        <ul>
-            <li>Pricing concerns (42% of calls)</li>
-            <li>Implementation complexity (38% of calls)</li>
-            <li>Feature gaps (27% of calls)</li>
-        </ul>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Customer sentiment
-    st.markdown(f"""
-    <div class="card">
-        <h4>Customer sentiment (<span class="confidence-low">● Low confidence</span> - limited sample size):</h4>
-        <ul>
-            <li>Positive sentiment in 62% of customer calls</li>
-            <li>Neutral sentiment in 27% of customer calls</li>
-            <li>Negative sentiment in 11% of customer calls</li>
-        </ul>
-    </div>
-    """, unsafe_allow_html=True)
-
 # Sidebar
 with st.sidebar:
     st.markdown("## Dashboard Controls")
@@ -577,6 +505,93 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### About")
     st.markdown("Executive Brief Dashboard v1.0")
-    st.markdown("Last updated: July 15, 2023")
+    st.markdown("Last updated: March 26, 2025")
 
 # Run the app with: streamlit run src/ui/executive_dashboard.py 
+
+# The following tabs are commented out but the code is preserved for future use
+"""
+# Sales Funnel Metrics Tab
+def sales_funnel_metrics_tab():
+    st.markdown("<h3>Sales Funnel Metrics</h3>", unsafe_allow_html=True)
+    
+    # Sales funnel metrics table
+    table_html = "<div class='table-container'><table>"
+    table_html += "<tr><th>Funnel Stage</th><th>Conversion Rate</th><th>Trend</th><th>Benchmark</th><th>Confidence</th></tr>"
+    
+    for i, row in df_sales_funnel.iterrows():
+        trend_value = row["Trend"]
+        trend_unit = row["Trend_Unit"]
+        trend_formatted = format_trend(trend_value) + f" {trend_unit}"
+        table_html += f"<tr><td>{row['Funnel Stage']}</td><td>{row['Conversion Rate']}</td><td>{trend_formatted}</td><td>{row['Benchmark']}</td><td>{format_confidence(row['Confidence'])}</td></tr>"
+    
+    table_html += "</table></div>"
+    st.markdown(table_html, unsafe_allow_html=True)
+
+# Revenue Quality Analysis Tab
+def revenue_quality_analysis_tab():
+    st.markdown("<h3>Revenue Quality Analysis</h3>", unsafe_allow_html=True)
+    
+    # Revenue quality analysis table
+    table_html = "<div class='table-container'><table>"
+    table_html += "<tr><th>Revenue Type</th><th>% of Total</th><th>Trend</th><th>Benchmark</th><th>Confidence</th></tr>"
+    
+    for i, row in df_revenue_quality.iterrows():
+        trend_formatted = format_trend(row["Trend"]) + " %"
+        table_html += f"<tr><td>{row['Revenue Type']}</td><td>{row['% of Total']}</td><td>{trend_formatted}</td><td>{row['Benchmark']}</td><td>{format_confidence(row['Confidence'])}</td></tr>"
+    
+    table_html += "</table></div>"
+    st.markdown(table_html, unsafe_allow_html=True)
+    
+    # Note at the bottom
+    st.markdown("<p><i>Note: Detailed segmentation by customer type not available with current data quality</i></p>", unsafe_allow_html=True)
+
+# Call Recording Analysis Tab
+def call_recording_analysis_tab():
+    st.markdown("<h3>Call Recording Analysis</h3>", unsafe_allow_html=True)
+    st.markdown("<p>Based on analysis of 124 sales and customer calls:</p>", unsafe_allow_html=True)
+    
+    # Top product features
+    st.markdown(f'''
+    <div class="card">
+        <h4>Top mentioned product features (<span class="confidence-high">● High confidence</span>):</h4>
+        <ul>
+            <li>Collaboration tools (68% of calls)</li>
+            <li>Reporting functionality (52% of calls)</li>
+            <li>Integration capabilities (47% of calls)</li>
+        </ul>
+    </div>
+    ''', unsafe_allow_html=True)
+    
+    # Common objections
+    st.markdown(f'''
+    <div class="card">
+        <h4>Common objections (<span class="confidence-medium">● Medium confidence</span>):</h4>
+        <ul>
+            <li>Pricing concerns (42% of calls)</li>
+            <li>Implementation complexity (38% of calls)</li>
+            <li>Feature gaps (27% of calls)</li>
+        </ul>
+    </div>
+    ''', unsafe_allow_html=True)
+    
+    # Customer sentiment
+    st.markdown(f'''
+    <div class="card">
+        <h4>Customer sentiment (<span class="confidence-low">● Low confidence</span> - limited sample size):</h4>
+        <ul>
+            <li>Positive sentiment in 62% of customer calls</li>
+            <li>Neutral sentiment in 27% of customer calls</li>
+            <li>Negative sentiment in 11% of customer calls</li>
+        </ul>
+    </div>
+    ''', unsafe_allow_html=True)
+
+# To use these tabs later, uncomment the tab declarations above and add:
+# with tab4:
+#     sales_funnel_metrics_tab()
+# with tab5:
+#     revenue_quality_analysis_tab()
+# with tab6:
+#     call_recording_analysis_tab()
+""" 

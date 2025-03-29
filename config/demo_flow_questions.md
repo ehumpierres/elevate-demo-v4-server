@@ -7,7 +7,7 @@ ELEVATE AGENT PROMPTS:
 - Show me the company monthly revenue for 2023
 
 # Craft hypotheses
-- [A-only] Despite a growing revenue trend, the head of sales and head of customer success have been raising red flags about closure rates and churn rates. What are some hypotheses of what could be going on? Be succinct
+- [A-only] Despite a growing revenue trend, the head of sales and head of customer success have been raising red flags about closure rates and churn rates. What are some hypotheses of what could be going on based on the revenue architecture framework? Be succinct
 
 # But growth driven by whales
 - Show me customer revenue concentration in 2023, rank order all customers by cumulative revenue percentage
@@ -29,3 +29,8 @@ ELEVATE AGENT PROMPTS:
 - [A-only] Propose a succinct overall business optimization plan
 - (Optional) [A-only] Estimate a post-optimization growth scenario to evaluate whether the 50% growth rate is still possible. Which of the current assumptions would need to change and by how much? 
 - (Optional) [A-only] I would you like a refined financial model or growth scenarios for investor conversations
+
+
+# Good questions to add:
+- Show me some typical support ticket complaints
+- Give me the breakdown of number of customers by vertical
