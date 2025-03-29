@@ -253,28 +253,26 @@ tab1, tab2, tab3, tab4 = st.tabs([
 with tab1:
     st.markdown("<h3>GTM System Health Scores</h3>", unsafe_allow_html=True)
     
-    # Create horizontal bar chart for GTM health scores
+    # Create vertical bar chart for GTM health scores
     fig = go.Figure()
     
-    # Add bars
+    # Add bars (vertical orientation)
     for i, row in df_gtm_health.iterrows():
         fig.add_trace(go.Bar(
-            y=[row["Component"]],  # Use as y for horizontal orientation
-            x=[row["Score"]],      # Use as x for horizontal orientation
-            orientation='h',       # Horizontal bars
+            x=[row["Component"]],      # Use as x for vertical orientation
+            y=[row["Score"]],          # Use as y for vertical orientation
             marker_color=row["Color"],
             name=row["Component"],
             text=[f"{row['Score']}/10"],
-            textposition='inside',
-            insidetextanchor='middle',
+            textposition='outside',
             width=0.6
         ))
     
     # Update layout
     fig.update_layout(
         title="GTM System Health Scores",
-        xaxis_title="Score (1-10)",
-        yaxis=dict(
+        yaxis_title="Score (1-10)",
+        xaxis=dict(
             title="",
             categoryorder='array',
             categoryarray=df_gtm_health["Component"].tolist()
@@ -282,7 +280,7 @@ with tab1:
         showlegend=False,
         height=400,
         margin=dict(t=30, b=10, l=10, r=10),
-        xaxis=dict(
+        yaxis=dict(
             range=[0, 10],
             dtick=2,
             gridcolor='lightgray'
@@ -291,7 +289,7 @@ with tab1:
     )
     
     # Add grid lines
-    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
+    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
     
     st.plotly_chart(fig, use_container_width=True)
     
