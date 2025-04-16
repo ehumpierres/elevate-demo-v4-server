@@ -1,16 +1,8 @@
 import os
 import subprocess
 import sys
-import os
-import subprocess
-import sys
-# Add this new line to import streamlit
-import streamlit as st
 
-# Configure Streamlit to use the PORT environment variable from Render
-if 'PORT' in os.environ:
-    port = int(os.environ['PORT'])
-    st.set_option('server.port', port)
+
 
 def main():
     """
@@ -34,8 +26,7 @@ def main():
         return 1
     
     # Construct the command to run the Streamlit app
-    port_arg = f"--server.port={os.environ.get('PORT', '8501')}"
-    cmd = [sys.executable, "-m", "streamlit", "run", app_path, port_arg, "--server.headless=true"]
+    cmd = [sys.executable, "-m", "streamlit", "run", app_path]
     
     print(f"Starting Streamlit app...")
     print(f"App path: {app_path}")
