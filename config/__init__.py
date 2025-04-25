@@ -20,12 +20,12 @@ SNOWFLAKE_PRIVATE_KEY_PATH = os.environ.get("SNOWFLAKE_PRIVATE_KEY_PATH", "snowf
 
 # OpenAI Configuration
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
-OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4")
+OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o")
 
 # ChromaDB Configuration
 CHROMA_PERSISTENCE_DIRECTORY = os.environ.get("CHROMA_PERSISTENCE_DIRECTORY", "data/chroma_db")
 CHROMA_COLLECTION_NAME = os.environ.get("CHROMA_COLLECTION_NAME", "vanna_snowflake")
 
 # Vanna.AI Configuration
-VANNA_MODEL_NAME = os.environ.get("VANNA_MODEL_NAME", "gpt-4")  # Default to GPT-4 for Vanna
+VANNA_MODEL_NAME = os.environ.get("VANNA_MODEL_NAME", "gpt-4o")  # Default to GPT-4 for Vanna
 VANNA_DIALECT = os.environ.get("VANNA_DIALECT", "snowflake") 

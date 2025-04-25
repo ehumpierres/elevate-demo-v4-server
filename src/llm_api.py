@@ -4,6 +4,7 @@ Module to handle interactions with the LLM API (OpenRouter).
 import httpx
 import sys
 import os
+import json
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config.config import OPENROUTER_API_KEY, OPENROUTER_API_URL, OPENROUTER_MODEL, API_TIMEOUT
 from config.persona import get_system_prompt
@@ -53,4 +54,17 @@ class LlmApi:
         
         response.raise_for_status()
         result = response.json()
-        return result["choices"][0]["message"]["content"] 
+        
+        # Debug: Print the full response structure
+        print("\n=== OpenRouter API Response Structure ===")
+        print(f"Model used: {OPENROUTER_MODEL}")
+        print(json.dumps(result, indent=2))
+        print("=======================================\n")
+        
+        # Check if the response has the expected structure
+        if "choices" in result and len(result["choices"]) > 0:
+            return result["choices"][0]["message"]["content"]
+        else:
+            print("WARNING: Unexpected response structure. Full response:", result)
+            # Return a fallback message
+            return "I apologize, but I encountered an issue with my response. Please try again or contact support." 

@@ -14,7 +14,7 @@ Your primary capabilities include:
 - Providing insights and summaries of the data
 - Suggesting follow-up questions for deeper analysis
 
-Always be helpful, accurate, and concise in your responses.
+Always be helpful, accurate, and concise in your responses. Format your responses with titles, indentations, and icons so they are easier to read.
 """
 
 # UI Configuration
