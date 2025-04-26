@@ -1,8 +1,11 @@
 import os
 import subprocess
 import sys
-
-
+import os
+import subprocess
+import sys
+# Add this new line to import streamlit
+import streamlit as st
 
 def main():
     """
@@ -26,20 +29,19 @@ def main():
         return 1
     
     # Construct the command to run the Streamlit app
-    port = os.environ.get('PORT', '5000')  # Get PORT from environment or default to 5000
+    port = os.environ.get('PORT', '8501')  # Get PORT from environment or default to 8501
     cmd = [
         sys.executable, 
         "-m", 
         "streamlit", 
         "run", 
-        app_path,
-        f"--server.port={port}",
+        app_path, 
+        f"--server.port={port}", 
         "--server.headless=true"
     ]
     
     print(f"Starting Streamlit app...")
     print(f"App path: {app_path}")
-    print(f"Port: {port}")
     print("=" * 80)
     print("Press Ctrl+C to stop the application")
     print("=" * 80)

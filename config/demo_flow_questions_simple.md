@@ -20,6 +20,12 @@ ELEVATE AGENT PROMPTS:
 # Unstrcutured data
 - **** Show me some typical support ticket complaints for Healthcare vertical customers
 
+##### 
 
 Show me customer revenue concentration in 2023, rank order all customers by cumulative revenue percentage
-Show me customer revenue concentration in 2023, rank order all customers by cumulative revenue percentage
+
+Show me some typical support ticket complaints for Healthcare vertical customers
+
+Show me year over year revenue change percentage (January 2023 vs January 2024) by customer segments Enterprise, SMB, Mid-market
+
+[No data analyst] Model out what happens to Healthcare growth if you increase win rates by 10 percentage points
