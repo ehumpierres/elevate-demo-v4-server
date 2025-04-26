@@ -1,17 +1,16 @@
 import os
 #import vanna
 import chromadb
-import snowflake.connector
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import serialization
 import logging
 from typing import List, Dict, Any, Optional
 from config import *
 import json
 from pathlib import Path
+from src.vanna_scripts.snowflake_connection_manager import SnowflakeConnectionManager, auto_reconnect
+import traceback
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 class VannaSnowflake:
@@ -27,7 +26,7 @@ class VannaSnowflake:
             openai_api_key: The OpenAI API key to use. If None, it will be read from config.
         """
         self.openai_api_key = openai_api_key or OPENAI_API_KEY
-        self.snowflake_connector = None
+        self.snowflake_connection = None
         self.vanna_ai = None
         self.chroma_client = None
         self.chroma_collection = None
@@ -40,39 +39,27 @@ class VannaSnowflake:
     def _init_snowflake(self):
         """Initialize the Snowflake connection."""
         try:
-            # Load private key
-            with open(SNOWFLAKE_PRIVATE_KEY_PATH, "rb") as key_file:
-                p_key = serialization.load_pem_private_key(
-                    key_file.read(),
-                    password=None,
-                    backend=default_backend()
-                )
+            # Log key environment variables (without sensitive values)
+            logger.debug(f"Initializing Snowflake connection with: Account={SNOWFLAKE_ACCOUNT}, " +
+                        f"User={SNOWFLAKE_USER}, Database={SNOWFLAKE_DATABASE}, Schema={SNOWFLAKE_SCHEMA}")
             
-            # Get key in correct format for Snowflake
-            p_key = p_key.private_bytes(
-                encoding=serialization.Encoding.DER,
-                format=serialization.PrivateFormat.PKCS8,
-                encryption_algorithm=serialization.NoEncryption()
-            )
-            
-            # Connect to Snowflake
-            # Format account name as orgname-accountname if org is provided
-            account = f"{SNOWFLAKE_ORG}-{SNOWFLAKE_ACCOUNT}" if SNOWFLAKE_ORG else SNOWFLAKE_ACCOUNT
-            logger.info(f"Using Snowflake account identifier: {account}")
-            
-            self.snowflake_connector = snowflake.connector.connect(
-                user=SNOWFLAKE_USER,
-                private_key=p_key,
-                account=account,
-                warehouse=SNOWFLAKE_WAREHOUSE,
-                role=SNOWFLAKE_ROLE,
+            # Use the Connection Manager instead of direct connection
+            self.snowflake_connection = SnowflakeConnectionManager(
+                snowflake_account=SNOWFLAKE_ACCOUNT,
+                snowflake_user=SNOWFLAKE_USER,
+                snowflake_org=SNOWFLAKE_ORG,
+                snowflake_warehouse=SNOWFLAKE_WAREHOUSE,
+                snowflake_role=SNOWFLAKE_ROLE,
                 database=SNOWFLAKE_DATABASE,
-                schema=SNOWFLAKE_SCHEMA
+                schema=SNOWFLAKE_SCHEMA,
+                snowflake_private_key_path=SNOWFLAKE_PRIVATE_KEY_PATH,
+                snowflake_private_key_base64=os.environ.get("SNOWFLAKE_PRIVATE_KEY_BASE64")
             )
             
             logger.info(f"Connected to Snowflake: {SNOWFLAKE_DATABASE}.{SNOWFLAKE_SCHEMA}")
         except Exception as e:
             logger.error(f"Error connecting to Snowflake: {e}")
+            logger.debug(f"Connection error details: {traceback.format_exc()}")
             raise
             
     def _init_chromadb(self):
@@ -116,6 +103,7 @@ class VannaSnowflake:
             logger.error(f"Error initializing Vanna.AI: {e}")
             raise
     
+    @auto_reconnect(max_retries=3)
     def get_ddl(self) -> List[str]:
         """
         Extract DDL statements from Snowflake for Vanna training.
@@ -124,7 +112,9 @@ class VannaSnowflake:
             List of DDL statements
         """
         try:
-            cursor = self.snowflake_connector.cursor()
+            # Use the connection manager instead of direct cursor
+            conn = self.snowflake_connection.get_connection()
+            cursor = conn.cursor()
             
             # Get all tables in the current schema
             cursor.execute(f"""
@@ -228,6 +218,7 @@ class VannaSnowflake:
             logger.error(f"Error generating SQL: {e}")
             raise
     
+    @auto_reconnect(max_retries=3)
     def execute_sql(self, sql: str) -> List[Dict[str, Any]]:
         """
         Execute SQL query on Snowflake and return results.
@@ -239,19 +230,8 @@ class VannaSnowflake:
             Results as a list of dictionaries
         """
         try:
-            cursor = self.snowflake_connector.cursor()
-            cursor.execute(sql)
-            
-            # Get column names
-            columns = [col[0] for col in cursor.description]
-            
-            # Convert results to list of dicts
-            results = []
-            for row in cursor:
-                results.append(dict(zip(columns, row)))
-                
-            cursor.close()
-            return results
+            # Use the execute_query method from our connection manager
+            return self.snowflake_connection.execute_query(sql)
         except Exception as e:
             logger.error(f"Error executing SQL: {e}")
             raise
@@ -283,4 +263,117 @@ class VannaSnowflake:
             return {
                 "question": question,
                 "error": str(e)
-            } 
+            }
+            
+    def close(self):
+        """Close all connections."""
+        if self.snowflake_connection:
+            self.snowflake_connection.close()
+
+    def test_connection(self, detailed=False):
+        """
+        Test the Snowflake connection by running a simple query.
+        
+        Args:
+            detailed: If True, return detailed connection information
+            
+        Returns:
+            Boolean success status or dict with detailed information
+        """
+        try:
+            if not self.snowflake_connection:
+                logger.error("No Snowflake connection available to test")
+                if detailed:
+                    return {
+                        "success": False,
+                        "error": "No Snowflake connection available",
+                        "connection_initialized": False
+                    }
+                return False
+            
+            # Get a connection
+            conn = self.snowflake_connection.get_connection()
+            
+            # Run test query to get connection details
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT 
+                    CURRENT_USER() as user,
+                    CURRENT_ROLE() as role,
+                    CURRENT_WAREHOUSE() as warehouse,
+                    CURRENT_DATABASE() as database,
+                    CURRENT_SCHEMA() as schema,
+                    CURRENT_ACCOUNT() as account,
+                    CURRENT_REGION() as region,
+                    CURRENT_VERSION() as version
+            """)
+            
+            result = cursor.fetchone()
+            cursor.close()
+            
+            # Verify if we have valid data
+            if not result:
+                logger.error("Connection test query returned no results")
+                if detailed:
+                    return {
+                        "success": False,
+                        "error": "Test query returned no results",
+                        "connection_initialized": True,
+                        "connection_active": True
+                    }
+                return False
+            
+            # Check if we can access the schema
+            try:
+                cursor = conn.cursor()
+                cursor.execute(f"SHOW TABLES IN {SNOWFLAKE_DATABASE}.{SNOWFLAKE_SCHEMA}")
+                tables = cursor.fetchall()
+                table_count = len(tables)
+                cursor.close()
+                schema_accessible = True
+                logger.info(f"Found {table_count} tables in {SNOWFLAKE_DATABASE}.{SNOWFLAKE_SCHEMA}")
+            except Exception as e:
+                schema_accessible = False
+                table_count = 0
+                schema_error = str(e)
+                logger.error(f"Error accessing schema: {schema_error}")
+            
+            # Build response
+            if detailed:
+                connection_details = {
+                    "success": True,
+                    "connection_initialized": True,
+                    "connection_active": True,
+                    "user": result[0],
+                    "role": result[1],
+                    "warehouse": result[2],
+                    "database": result[3],
+                    "schema": result[4],
+                    "account": result[5],
+                    "region": result[6],
+                    "version": result[7],
+                    "schema_accessible": schema_accessible,
+                    "table_count": table_count
+                }
+                
+                if not schema_accessible:
+                    connection_details["schema_error"] = schema_error
+                
+                return connection_details
+            
+            return True
+            
+        except Exception as e:
+            error_msg = str(e)
+            logger.error(f"Connection test failed: {error_msg}")
+            logger.debug(f"Connection test error details: {traceback.format_exc()}")
+            
+            if detailed:
+                return {
+                    "success": False,
+                    "error": error_msg,
+                    "details": traceback.format_exc(),
+                    "connection_initialized": self.snowflake_connection is not None
+                }
+            
+            return False 

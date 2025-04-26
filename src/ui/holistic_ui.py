@@ -6,6 +6,7 @@ import sys
 import os
 import re
 import traceback
+import json
 
 # Add the project root to the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
@@ -17,7 +18,9 @@ from src.companion import Companion
 from src.ui.vanna_calls import (
     generate_sql_cached,
     run_sql_cached,
-    is_sql_valid_cached
+    is_sql_valid_cached,
+    clear_all_caches,
+    test_snowflake_connection
 )
 
 # Custom exception handling to override Streamlit's default error display
@@ -226,6 +229,85 @@ with st.sidebar:
             st.rerun()
     else:
         st.write(f"Active User: **{st.session_state.user_id}**")
+        
+        # Data connection section
+        st.subheader("Data Connection")
+        
+        # Test Snowflake Connection button
+        if st.button("Test Snowflake Connection"):
+            with st.spinner("Testing Snowflake connection..."):
+                try:
+                    result = test_snowflake_connection()
+                    if isinstance(result, dict) and result.get("success", False):
+                        st.success("✅ Connected to Snowflake successfully!")
+                        with st.expander("Connection Details"):
+                            # Format the connection details nicely
+                            st.write(f"**User:** {result.get('user')}")
+                            st.write(f"**Role:** {result.get('role')}")
+                            st.write(f"**Warehouse:** {result.get('warehouse')}")
+                            st.write(f"**Database:** {result.get('database')}")
+                            st.write(f"**Schema:** {result.get('schema')}")
+                            st.write(f"**Tables found:** {result.get('table_count', 0)}")
+                            
+                            # Check schema access
+                            if result.get("schema_accessible", False):
+                                st.write("✅ Schema is accessible")
+                            else:
+                                st.error(f"❌ Schema access error: {result.get('schema_error', 'Unknown error')}")
+                    else:
+                        st.error("❌ Failed to connect to Snowflake")
+                        with st.expander("Error Details"):
+                            if isinstance(result, dict):
+                                st.write(f"**Error:** {result.get('error', 'Unknown error')}")
+                                if "details" in result:
+                                    st.code(result["details"], language="python")
+                            else:
+                                st.write("Connection test failed without detailed information.")
+                except Exception as e:
+                    st.error(f"❌ Error testing connection: {str(e)}")
+                    with st.expander("Error Traceback"):
+                        st.code(traceback.format_exc(), language="python")
+        
+        # Add a Reconnect to Snowflake button
+        if st.button("Reconnect to Snowflake"):
+            with st.spinner("Reconnecting to Snowflake..."):
+                try:
+                    # Clear caches to force reconnection
+                    clear_all_caches()
+                    st.success("Reconnected to Snowflake successfully!")
+                    
+                    # Verify the new connection
+                    with st.spinner("Verifying new connection..."):
+                        result = test_snowflake_connection()
+                        if isinstance(result, dict) and result.get("success", False):
+                            st.success(f"✅ Verified connection to {result.get('database')}.{result.get('schema')}")
+                        else:
+                            st.warning("⚠️ Reconnection may have failed, please check connection details")
+                except Exception as e:
+                    st.error(f"❌ Error during reconnection: {str(e)}")
+                    with st.expander("Error Details"):
+                        st.code(traceback.format_exc(), language="python")
+        
+        # Show current Snowflake environment settings
+        with st.expander("Snowflake Configuration"):
+            # Get environment variables related to Snowflake (hide sensitive values)
+            snowflake_vars = {
+                "Account": os.environ.get("SNOWFLAKE_ACCOUNT", "Not set"),
+                "User": os.environ.get("SNOWFLAKE_USER", "Not set"),
+                "Organization": os.environ.get("SNOWFLAKE_ORG", "Not set"),
+                "Warehouse": os.environ.get("SNOWFLAKE_WAREHOUSE", "Not set"),
+                "Role": os.environ.get("SNOWFLAKE_ROLE", "Not set"),
+                "Database": os.environ.get("SNOWFLAKE_DATABASE", "Not set"),
+                "Schema": os.environ.get("SNOWFLAKE_SCHEMA", "Not set"),
+                "Auth Method": "Private Key (base64)" if os.environ.get("SNOWFLAKE_PRIVATE_KEY_BASE64") else 
+                              "Private Key File" if os.environ.get("SNOWFLAKE_PRIVATE_KEY_PATH") else
+                              "Password" if os.environ.get("SNOWFLAKE_PASSWORD") else "None"
+            }
+            
+            for key, value in snowflake_vars.items():
+                st.write(f"**{key}:** {value}")
+        
+        st.divider()
         
         # Clear cache button
         if st.button("Clear Cache"):
