@@ -14,6 +14,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../.
 # Import the Mem0 Companion agent
 from src.companion import Companion
 
+# Import configuration utilities
+from config.config import update_model, OPENROUTER_MODEL
+
 # Import Vanna functionality for data analysis
 from src.ui.vanna_calls import (
     generate_sql_cached,
@@ -60,6 +63,9 @@ if "data_analyst_enabled" not in st.session_state:
 
 if "loading" not in st.session_state:
     st.session_state.loading = False
+
+if "current_model" not in st.session_state:
+    st.session_state.current_model = OPENROUTER_MODEL
 
 # Page configuration
 st.set_page_config(
@@ -229,6 +235,25 @@ with st.sidebar:
             st.rerun()
     else:
         st.write(f"Active User: **{st.session_state.user_id}**")
+        
+        # Model selector
+        st.subheader("Model Settings")
+        model_options = ["openai/o3", "openai/gpt-4o-2024-11-20"]
+        selected_model = st.selectbox(
+            "Select LLM Model:",
+            options=model_options,
+            index=model_options.index(st.session_state.current_model),
+            key="model_selector"
+        )
+        
+        # Update model if changed
+        if selected_model != st.session_state.current_model:
+            with st.spinner(f"Switching to {selected_model}..."):
+                update_model(selected_model)
+                st.session_state.current_model = selected_model
+                st.success(f"Model switched to {selected_model}")
+        
+        st.divider()
         
         # Data connection section
         st.subheader("Data Connection")

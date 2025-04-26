@@ -21,8 +21,20 @@ JSON_FILE_EXTENSION = ".json"
 
 # API Settings
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
-OPENROUTER_MODEL = "openai/o3"
+OPENROUTER_MODEL = "openai/gpt-4o-2024-11-20"
 API_TIMEOUT = 30.0  # seconds
 
 # Memory Settings
 OUTPUT_FORMAT = "v1.1"  # Mem0 output format 
+
+# Function to update the model at runtime
+def update_model(new_model):
+    """
+    Updates the OPENROUTER_MODEL at runtime.
+    
+    Args:
+        new_model: The new model to use
+    """
+    global OPENROUTER_MODEL
+    OPENROUTER_MODEL = new_model
+    return OPENROUTER_MODEL 
