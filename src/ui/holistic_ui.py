@@ -77,6 +77,10 @@ if "follow_up_questions" not in st.session_state:
 if "llm_api" not in st.session_state:
     st.session_state.llm_api = None
 
+# Add a new state variable for the warm start trigger
+if "trigger_warm_start" not in st.session_state:
+    st.session_state.trigger_warm_start = False
+
 # Add a new state variable for tracking the two-phase process
 if "waiting_for_followup" not in st.session_state:
     st.session_state.waiting_for_followup = False
@@ -84,6 +88,10 @@ if "waiting_for_followup" not in st.session_state:
 # Add a state variable to store the last user input for processing follow-ups
 if "last_user_input" not in st.session_state:
     st.session_state.last_user_input = None
+
+# Add a new state variable for selected follow-up question
+if "selected_follow_up" not in st.session_state:
+    st.session_state.selected_follow_up = None
 
 # Page configuration
 st.set_page_config(
@@ -249,7 +257,11 @@ Based on the above expertise, suggest follow-up questions that dive deeper into 
 # Function to handle clicking a follow-up question
 def handle_follow_up_click(question):
     """Process the selected follow-up question"""
-    # This function is called when a follow-up question is clicked
+    # Save the selected question for display
+    st.session_state.selected_follow_up = question
+    # Clear the follow-up questions list
+    st.session_state.follow_up_questions = []
+    # Process the question
     process_input(question)
     # Force a rerun to update the UI
     st.rerun()
@@ -273,9 +285,10 @@ def process_input(user_input):
             follow_up_questions = generate_follow_up_questions(latest_response)
             st.session_state.follow_up_questions = follow_up_questions
             
-            # Reset the waiting flag
+            # Reset the waiting flag and selected follow-up
             st.session_state.waiting_for_followup = False
             st.session_state.loading = False
+            st.session_state.selected_follow_up = None
         return
         
     # Otherwise, we're in phase 1: process the input and generate a response
@@ -354,10 +367,24 @@ with st.sidebar:
     # User identification
     if st.session_state.user_id is None:
         user_id = st.text_input("Enter your username:")
-        if st.button("Start Session") and user_id:
+        
+        # Create columns for the two buttons
+        col1, col2 = st.columns(2)
+        
+        # Regular start button
+        if col1.button("Start Session") and user_id:
             st.session_state.user_id = user_id
             st.session_state.companion = Companion(user_id)
             st.session_state.llm_api = LlmApi()  # Initialize LLM API for follow-up questions
+            st.rerun()
+        
+        # Warm start button
+        if col2.button("Warm Start") and user_id:
+            st.session_state.user_id = user_id
+            st.session_state.companion = Companion(user_id)
+            st.session_state.llm_api = LlmApi()  # Initialize LLM API for follow-up questions
+            # Set a flag to trigger the warm start prompt after rerun
+            st.session_state.trigger_warm_start = True
             st.rerun()
     else:
         st.write(f"Active User: **{st.session_state.user_id}**")
@@ -473,6 +500,12 @@ if st.session_state.user_id:
     st.title("Elevate AI Companion")
     st.caption("An intelligent business strategist with memory and data analysis capabilities")
     
+    # Check for the trigger_warm_start flag and process the warm start prompt
+    if st.session_state.trigger_warm_start:
+        initial_prompt = "Give me a status of the most recent financial milestones and business risks, and show me the revenue for the last quarter, be succint"
+        st.session_state.trigger_warm_start = False
+        process_input(initial_prompt)
+    
     # Display chat messages
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
@@ -518,6 +551,10 @@ if st.session_state.user_id:
             # Create a clickable button for each question
             if cols[i].button(question, key=f"follow_up_{i}", use_container_width=True):
                 handle_follow_up_click(question)
+    elif st.session_state.selected_follow_up and st.session_state.loading:
+        # Show only the selected question when it's being processed
+        st.write("**Processing Question:**")
+        st.info(st.session_state.selected_follow_up)
     
     # Chat input area with data analyst toggle
     col1, col2 = st.columns([5, 1])
