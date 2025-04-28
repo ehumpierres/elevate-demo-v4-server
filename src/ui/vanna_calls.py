@@ -172,10 +172,10 @@ def is_sql_valid_cached(sql):
         logger.warning(f"SQL validation failed - too short: {sql}")
         return False
     
-    # Basic check for SELECT statement
+    # Basic check for SELECT or WITH statement
     sql_lower = sql.lower().strip()
-    if not sql_lower.startswith("select"):
-        logger.warning(f"SQL validation failed - not a SELECT query: {sql[:50]}...")
+    if not (sql_lower.startswith("select") or sql_lower.startswith("with")):
+        logger.warning(f"SQL validation failed - not a SELECT or WITH query: {sql[:50]}...")
         return False
     
     logger.debug(f"SQL validation passed for query: {sql[:50]}...")
