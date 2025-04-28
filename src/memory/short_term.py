@@ -97,4 +97,17 @@ class ShortTermMemory:
         Returns:
             List of all message dictionaries
         """
-        return self.full_history 
+        return self.full_history
+
+    def get_api_history(self, limit=30):
+        """
+        Get the most recent messages for API calls, limited to the specified number.
+        
+        Args:
+            limit: Maximum number of recent messages to return (default: 30)
+            
+        Returns:
+            List of the most recent message dictionaries, limited to the specified count
+        """
+        # Get the last 'limit' messages from the full history
+        return self.full_history[-limit:] if len(self.full_history) > limit else self.full_history 

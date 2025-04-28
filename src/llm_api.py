@@ -6,7 +6,13 @@ import sys
 import os
 import json
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config.config import OPENROUTER_API_KEY, OPENROUTER_API_URL, OPENROUTER_MODEL, API_TIMEOUT
+from config.config import (
+    OPENROUTER_API_KEY, 
+    OPENROUTER_API_URL, 
+    OPENROUTER_MODEL, 
+    API_TIMEOUT,
+    DEFAULT_MAX_COMPLETION_TOKENS  # Import the new config variable
+)
 from config.persona import get_system_prompt
 
 class LlmApi:
@@ -19,7 +25,7 @@ class LlmApi:
             "Content-Type": "application/json"
         }
     
-    def generate_response(self, user_message, user_memories, companion_memories, recent_conversation):
+    def generate_response(self, user_message, user_memories, companion_memories, recent_conversation, max_tokens=DEFAULT_MAX_COMPLETION_TOKENS):
         """
         Generate a response from the LLM.
         
@@ -28,6 +34,7 @@ class LlmApi:
             user_memories: Memories related to the user
             companion_memories: Memories from the companion
             recent_conversation: Recent conversation history
+            max_tokens: Maximum number of tokens to generate in the response (default from config)
             
         Returns:
             The generated response from the LLM
@@ -41,7 +48,8 @@ class LlmApi:
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_message}
-            ]
+            ],
+            "max_tokens": max_tokens  # Add max_tokens parameter to limit completion length
         }
         
         # Make the API call
@@ -58,6 +66,7 @@ class LlmApi:
         # Debug: Print the full response structure
         print("\n=== OpenRouter API Response Structure ===")
         print(f"Model used: {OPENROUTER_MODEL}")
+        print(f"Max tokens setting: {max_tokens}")
         print(json.dumps(result, indent=2))
         print("=======================================\n")
         

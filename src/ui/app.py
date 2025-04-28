@@ -4,11 +4,31 @@ Streamlit UI for the Revenue Architect AI companion.
 import os
 import sys
 import streamlit as st
+import re
 
 # Add the parent directory to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from src.companion import Companion
+
+def preprocess_markdown(text):
+    """
+    Preprocess markdown text to handle special characters and formatting issues.
+    
+    Args:
+        text: The markdown text to preprocess
+        
+    Returns:
+        Preprocessed text with proper escaping
+    """
+    # Handle dollar signs for financial figures - escape them properly for markdown
+    text = re.sub(r'(\$\d+[\d,.]*)', r'\\\1', text)
+    
+    # Make sure asterisks for bold text have spaces when needed for proper rendering
+    text = re.sub(r'(\*\*)(\S)', r'\1 \2', text)
+    text = re.sub(r'(\S)(\*\*)', r'\1 \2', text)
+    
+    return text
 
 def initialize_session_state():
     """Initialize session state variables if they don't exist."""
@@ -63,10 +83,15 @@ def main():
     with chat_container:
         for message in st.session_state.messages:
             with st.chat_message(message["role"]):
+                # Process the message content to handle formatting issues
+                content = message["content"]
+                if message["role"] == "assistant":
+                    content = preprocess_markdown(content)
+                
                 # For equations and formulas, use code blocks to preserve formatting
-                if "\\text" in message["content"] or "\\times" in message["content"]:
+                if "\\text" in content or "\\times" in content:
                     # Group consecutive equation lines together
-                    lines = message["content"].split('\n')
+                    lines = content.split('\n')
                     i = 0
                     while i < len(lines):
                         # Skip empty lines
@@ -102,7 +127,7 @@ def main():
                             i = j
                 else:
                     # Regular message without equations
-                    st.markdown(message["content"])
+                    st.markdown(content)
     
     # Chat input
     if st.session_state.companion:
@@ -121,10 +146,13 @@ def main():
                 with st.spinner("Arabella is thinking..."):
                     response = st.session_state.companion.process_message(user_input)
                     
+                    # Preprocess to handle formatting issues
+                    processed_response = preprocess_markdown(response)
+                    
                     # For equations and formulas, use code blocks to preserve formatting
-                    if "\\text" in response or "\\times" in response:
+                    if "\\text" in processed_response or "\\times" in processed_response:
                         # Group consecutive equation lines together
-                        lines = response.split('\n')
+                        lines = processed_response.split('\n')
                         i = 0
                         while i < len(lines):
                             # Skip empty lines
@@ -160,7 +188,7 @@ def main():
                                 i = j
                     else:
                         # Regular message without equations
-                        st.markdown(response)
+                        st.markdown(processed_response)
             
             # Add assistant response to chat
             st.session_state.messages.append({"role": "assistant", "content": response})

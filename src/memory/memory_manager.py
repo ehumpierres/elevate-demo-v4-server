@@ -108,4 +108,16 @@ class MemoryManager:
         Returns:
             List of all conversation message dictionaries
         """
-        return self.short_term.get_full_history() 
+        return self.short_term.get_full_history()
+
+    def get_api_conversation_history(self, limit=30):
+        """
+        Get the most recent conversation history for API calls, limited to the specified number.
+        
+        Args:
+            limit: Maximum number of recent messages to return (default: 30)
+            
+        Returns:
+            List of the most recent message dictionaries, limited to the specified count
+        """
+        return self.short_term.get_api_history(limit) 
