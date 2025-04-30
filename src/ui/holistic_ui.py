@@ -77,6 +77,10 @@ if "follow_up_questions" not in st.session_state:
 if "llm_api" not in st.session_state:
     st.session_state.llm_api = None
 
+# Add a state variable to track if text-to-SQL has been initialized in this session
+if "sql_initialized" not in st.session_state:
+    st.session_state.sql_initialized = False
+
 # Add a new state variable for the warm start trigger
 if "trigger_warm_start" not in st.session_state:
     st.session_state.trigger_warm_start = False
@@ -300,10 +304,16 @@ def process_input(user_input):
     sql_error = None
     
     if st.session_state.data_analyst_enabled:
-        with st.spinner("Data Analyst Agent is analyzing..."):
+        # Check if this is the first time using SQL in this session
+        spinner_message = "Tuning the text-to-SQL assistant, this takes 20 seconds and happens once every new session" if not st.session_state.sql_initialized else "Data Analyst Agent is analyzing..."
+        
+        with st.spinner(spinner_message):
             try:
                 # Generate SQL from the user's question
                 sql_query = generate_sql_cached(question=user_input)
+                
+                # Mark SQL as initialized after first use
+                st.session_state.sql_initialized = True
                 
                 # Execute the SQL if valid
                 if sql_query and is_sql_valid_cached(sql=sql_query):
