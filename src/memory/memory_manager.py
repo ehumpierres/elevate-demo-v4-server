@@ -1,7 +1,7 @@
 """
 Memory manager to coordinate between short-term and long-term memory systems.
 """
-from .short_term import ShortTermMemory
+from .snowflake_memory import SnowflakeShortTermMemory
 from .long_term import LongTermMemory
 import sys
 import os
@@ -12,7 +12,7 @@ class MemoryManager:
     """
     Manages both short-term and long-term memory systems.
     
-    This class coordinates between the JSON-based short-term memory
+    This class coordinates between the Snowflake-based short-term memory
     and the Mem0-based long-term memory.
     """
     
@@ -24,7 +24,7 @@ class MemoryManager:
             user_id: The ID of the user
         """
         self.user_id = user_id
-        self.short_term = ShortTermMemory(user_id)
+        self.short_term = SnowflakeShortTermMemory(user_id)
         self.long_term = LongTermMemory()
     
     def add_user_message(self, content):

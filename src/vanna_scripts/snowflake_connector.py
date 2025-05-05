@@ -3,6 +3,19 @@ import snowflake.connector
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 import logging
+import sys
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from config.config import (
+    SNOWFLAKE_ACCOUNT,
+    SNOWFLAKE_USER,
+    SNOWFLAKE_WAREHOUSE,
+    SNOWFLAKE_ROLE,
+    SNOWFLAKE_ORG,
+    SNOWFLAKE_PRIVATE_KEY_PATH,
+    SNOWFLAKE_MEMORY_DATABASE,
+    SNOWFLAKE_MEMORY_SCHEMA
+)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -19,24 +32,17 @@ class SnowflakeConnector:
         snowflake_role: str = None,
         snowflake_org: str = None,
         snowflake_private_key_path: str = None,
-        memory_database: str = "MEMORY_AGENT_DB",
-        memory_schema: str = "MEMORY_SCHEMA"
+        memory_database: str = None,
+        memory_schema: str = None
     ):
-        self.snowflake_account = snowflake_account or os.environ.get("SNOWFLAKE_ACCOUNT")
-        self.snowflake_user = snowflake_user or os.environ.get("SNOWFLAKE_USER")
-        self.snowflake_warehouse = snowflake_warehouse or os.environ.get("SNOWFLAKE_WAREHOUSE")
-        self.snowflake_role = snowflake_role or os.environ.get("SNOWFLAKE_ROLE")
-        self.snowflake_org = snowflake_org or os.environ.get("SNOWFLAKE_ORG")
-        
-        # Default private key path if not provided
-        if not snowflake_private_key_path:
-            snowflake_private_key_path = os.environ.get("SNOWFLAKE_PRIVATE_KEY_PATH")
-            if not snowflake_private_key_path:
-                snowflake_private_key_path = os.path.join("snowflake_keys", "rsa_key.p8")
-        
-        self.snowflake_private_key_path = snowflake_private_key_path
-        self.memory_database = memory_database
-        self.memory_schema = memory_schema
+        self.snowflake_account = snowflake_account or SNOWFLAKE_ACCOUNT
+        self.snowflake_user = snowflake_user or SNOWFLAKE_USER
+        self.snowflake_warehouse = snowflake_warehouse or SNOWFLAKE_WAREHOUSE
+        self.snowflake_role = snowflake_role or SNOWFLAKE_ROLE
+        self.snowflake_org = snowflake_org or SNOWFLAKE_ORG
+        self.snowflake_private_key_path = snowflake_private_key_path or SNOWFLAKE_PRIVATE_KEY_PATH
+        self.memory_database = memory_database or SNOWFLAKE_MEMORY_DATABASE
+        self.memory_schema = memory_schema or SNOWFLAKE_MEMORY_SCHEMA
         self.conn = None
         self.p_key = None  # Will hold the loaded private key
         
