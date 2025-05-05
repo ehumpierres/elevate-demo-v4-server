@@ -52,18 +52,18 @@ def migrate_data():
             
             # Insert into Snowflake
             query = """
-                MERGE INTO user_conversations AS target
-                USING (SELECT :user_id AS user_id, 
-                              :last_updated AS last_updated, 
-                              PARSE_JSON(:history_json) AS conversation_history) AS source
-                ON target.user_id = source.user_id
+                MERGE INTO USER_CONVERSATIONS AS target
+                USING (SELECT :user_id AS USER_ID, 
+                              :last_updated AS LAST_UPDATED, 
+                              PARSE_JSON(:history_json) AS CONVERSATION_HISTORY) AS source
+                ON target.USER_ID = source.USER_ID
                 WHEN MATCHED THEN
                     UPDATE SET 
-                        last_updated = source.last_updated,
-                        conversation_history = source.conversation_history
+                        LAST_UPDATED = source.LAST_UPDATED,
+                        CONVERSATION_HISTORY = source.CONVERSATION_HISTORY
                 WHEN NOT MATCHED THEN
-                    INSERT (user_id, last_updated, conversation_history)
-                    VALUES (source.user_id, source.last_updated, source.conversation_history)
+                    INSERT (USER_ID, LAST_UPDATED, CONVERSATION_HISTORY)
+                    VALUES (source.USER_ID, source.LAST_UPDATED, source.CONVERSATION_HISTORY)
             """
             
             cursor.execute(

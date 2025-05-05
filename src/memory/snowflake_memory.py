@@ -36,9 +36,9 @@ class SnowflakeShortTermMemory:
             
             # Query to get the user's conversation history
             query = """
-                SELECT conversation_history 
-                FROM user_conversations 
-                WHERE user_id = :user_id
+                SELECT CONVERSATION_HISTORY 
+                FROM USER_CONVERSATIONS 
+                WHERE USER_ID = %(user_id)s
             """
             
             cursor.execute(query, {"user_id": self.user_id})
@@ -48,8 +48,22 @@ class SnowflakeShortTermMemory:
                 # Parse the conversation history from the VARIANT column
                 data = result[0]
                 
-                # Load the full history
-                self.full_history = data
+                # Ensure data is a list - Snowflake might return it as a string or other format
+                if isinstance(data, str):
+                    try:
+                        # Try to parse it as JSON
+                        self.full_history = json.loads(data)
+                    except json.JSONDecodeError:
+                        # If it's not valid JSON, initialize as empty list
+                        print(f"Error: Invalid JSON data from Snowflake: {data}")
+                        self.full_history = []
+                elif isinstance(data, list):
+                    # It's already a list, use as is
+                    self.full_history = data
+                else:
+                    # Some other format, initialize as empty list
+                    print(f"Error: Unexpected data type from Snowflake: {type(data)}")
+                    self.full_history = []
                 
                 # Load the most recent messages into the deque for context
                 recent_messages = self.full_history[-SHORT_TERM_MEMORY_SIZE:] if len(self.full_history) > SHORT_TERM_MEMORY_SIZE else self.full_history
@@ -71,22 +85,24 @@ class SnowflakeShortTermMemory:
             
             # MERGE statement (UPSERT) to insert or update the conversation
             query = """
-                MERGE INTO user_conversations AS target
-                USING (SELECT :user_id AS user_id, 
-                              :last_updated AS last_updated, 
-                              PARSE_JSON(:history_json) AS conversation_history) AS source
-                ON target.user_id = source.user_id
+                MERGE INTO USER_CONVERSATIONS AS target
+                USING (SELECT %(user_id)s AS USER_ID, 
+                              %(last_updated)s AS LAST_UPDATED, 
+                              PARSE_JSON(%(history_json)s) AS CONVERSATION_HISTORY) AS source
+                ON target.USER_ID = source.USER_ID
                 WHEN MATCHED THEN
                     UPDATE SET 
-                        last_updated = source.last_updated,
-                        conversation_history = source.conversation_history
+                        LAST_UPDATED = source.LAST_UPDATED,
+                        CONVERSATION_HISTORY = source.CONVERSATION_HISTORY
                 WHEN NOT MATCHED THEN
-                    INSERT (user_id, last_updated, conversation_history)
-                    VALUES (source.user_id, source.last_updated, source.conversation_history)
+                    INSERT (USER_ID, LAST_UPDATED, CONVERSATION_HISTORY)
+                    VALUES (source.USER_ID, source.LAST_UPDATED, source.CONVERSATION_HISTORY)
             """
             
             # Convert the full_history to a JSON string
             history_json = json.dumps(self.full_history)
+            
+            print(f"Saving conversation for user '{self.user_id}' with {len(self.full_history)} messages to Snowflake")
             
             # Execute the query with parameters
             cursor.execute(
@@ -101,6 +117,7 @@ class SnowflakeShortTermMemory:
             # Commit the transaction
             conn.commit()
             cursor.close()
+            print(f"Successfully saved conversation for user '{self.user_id}' to Snowflake")
         except Exception as e:
             print(f"Error saving conversation to Snowflake: {e}")
     

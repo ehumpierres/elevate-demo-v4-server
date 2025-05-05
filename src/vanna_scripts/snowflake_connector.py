@@ -1,4 +1,5 @@
 import os
+import base64
 import snowflake.connector
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
@@ -13,6 +14,7 @@ from config.config import (
     SNOWFLAKE_ROLE,
     SNOWFLAKE_ORG,
     SNOWFLAKE_PRIVATE_KEY_PATH,
+    SNOWFLAKE_PRIVATE_KEY_BASE64,
     SNOWFLAKE_MEMORY_DATABASE,
     SNOWFLAKE_MEMORY_SCHEMA
 )
@@ -32,6 +34,7 @@ class SnowflakeConnector:
         snowflake_role: str = None,
         snowflake_org: str = None,
         snowflake_private_key_path: str = None,
+        snowflake_private_key_base64: str = None,
         memory_database: str = None,
         memory_schema: str = None
     ):
@@ -41,6 +44,7 @@ class SnowflakeConnector:
         self.snowflake_role = snowflake_role or SNOWFLAKE_ROLE
         self.snowflake_org = snowflake_org or SNOWFLAKE_ORG
         self.snowflake_private_key_path = snowflake_private_key_path or SNOWFLAKE_PRIVATE_KEY_PATH
+        self.snowflake_private_key_base64 = snowflake_private_key_base64 or SNOWFLAKE_PRIVATE_KEY_BASE64
         self.memory_database = memory_database or SNOWFLAKE_MEMORY_DATABASE
         self.memory_schema = memory_schema or SNOWFLAKE_MEMORY_SCHEMA
         self.conn = None
@@ -96,11 +100,34 @@ class SnowflakeConnector:
             raise
     
     def _load_private_key(self):
-        """Load private key from file."""
+        """Load private key from file or base64 string."""
         try:
-            # Check if file exists
-            if os.path.exists(self.snowflake_private_key_path):
-                logger.info(f"Loading private key from: {self.snowflake_private_key_path}")
+            # First try to load from base64 string
+            if self.snowflake_private_key_base64:
+                logger.info("Loading private key from base64 string")
+                try:
+                    private_key_data = base64.b64decode(self.snowflake_private_key_base64)
+                    self.p_key = serialization.load_pem_private_key(
+                        private_key_data,
+                        password=None,
+                        backend=default_backend()
+                    )
+                    
+                    # Get key in correct format for Snowflake
+                    self.p_key = self.p_key.private_bytes(
+                        encoding=serialization.Encoding.DER,
+                        format=serialization.PrivateFormat.PKCS8,
+                        encryption_algorithm=serialization.NoEncryption()
+                    )
+                    
+                    logger.info("Successfully loaded private key from base64")
+                    return self.p_key
+                except Exception as e:
+                    logger.error(f"Error loading private key from base64: {e}")
+            
+            # Fall back to loading from file if base64 failed
+            if self.snowflake_private_key_path and os.path.exists(self.snowflake_private_key_path):
+                logger.info(f"Loading private key from file: {self.snowflake_private_key_path}")
                 with open(self.snowflake_private_key_path, "rb") as key_file:
                     self.p_key = serialization.load_pem_private_key(
                         key_file.read(),
@@ -115,10 +142,10 @@ class SnowflakeConnector:
                     encryption_algorithm=serialization.NoEncryption()
                 )
                 
-                logger.info("Successfully loaded private key")
+                logger.info("Successfully loaded private key from file")
                 return self.p_key
             else:
-                logger.error(f"Private key file not found at: {self.snowflake_private_key_path}")
+                logger.warning("No valid private key source found")
                 self.p_key = None
         except Exception as e:
             logger.error(f"Error loading private key: {e}")
