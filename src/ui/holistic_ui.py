@@ -21,36 +21,11 @@ from config.config import update_model, OPENROUTER_MODEL, OPENROUTER_API_URL, AP
 # Import LLM API for generating follow-up questions
 from src.llm_api import LlmApi
 
-# Import Vanna functionality for data analysis
+# Import Vanna functionality for data analysis (now integrated into Companion)
 from src.ui.vanna_calls import (
-    generate_sql_cached,
-    run_sql_cached,
-    is_sql_valid_cached,
     clear_all_caches,
     test_snowflake_connection
 )
-
-# Custom exception handling to override Streamlit's default error display
-def handle_exception(func):
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            error_msg = str(e)
-            if "sql" in error_msg.lower() or "query" in error_msg.lower():
-                # SQL-related error
-                if "syntax" in error_msg.lower() or "compilation" in error_msg.lower():
-                    st.info("There was an error compiling the SQL. The Data Analyst couldn't answer this question.")
-                else:
-                    st.info("The Data Analyst couldn't process this query.")
-            else:
-                # Non-SQL error - still use info box but with general message
-                st.info(f"An issue occurred: {error_msg}")
-            
-            # Optionally log the full traceback for debugging
-            traceback.print_exc()
-            return None
-    return wrapper
 
 # Initialize session state variables
 if "messages" not in st.session_state:
@@ -61,9 +36,6 @@ if "user_id" not in st.session_state:
 
 if "companion" not in st.session_state:
     st.session_state.companion = None
-
-if "data_analyst_enabled" not in st.session_state:
-    st.session_state.data_analyst_enabled = False
 
 if "loading" not in st.session_state:
     st.session_state.loading = False
@@ -76,10 +48,6 @@ if "follow_up_questions" not in st.session_state:
 
 if "llm_api" not in st.session_state:
     st.session_state.llm_api = None
-
-# Add a state variable to track if text-to-SQL has been initialized in this session
-if "sql_initialized" not in st.session_state:
-    st.session_state.sql_initialized = False
 
 # Add a new state variable for the warm start trigger
 if "trigger_warm_start" not in st.session_state:
@@ -270,12 +238,6 @@ def handle_follow_up_click(question):
     # Force a rerun to update the UI
     st.rerun()
 
-# Apply our exception handler to the run_sql_cached function to handle errors gracefully
-@handle_exception
-def safe_run_sql(sql_query, question):
-    """A wrapper around run_sql_cached that handles exceptions gracefully"""
-    return run_sql_cached(sql=sql_query)
-
 # Function to process user input with data analysis if enabled
 def process_input(user_input):
     # Phase 1: Generate and display the response
@@ -298,55 +260,19 @@ def process_input(user_input):
     # Otherwise, we're in phase 1: process the input and generate a response
     st.session_state.loading = True
     
-    # Step 1: Check if data analysis is enabled
-    data_result = None
-    sql_query = None
-    sql_error = None
-    
-    if st.session_state.data_analyst_enabled:
-        # Check if this is the first time using SQL in this session
-        spinner_message = "Tuning the text-to-SQL assistant, this takes 20 seconds and happens once every new session" if not st.session_state.sql_initialized else "Data Analyst Agent is analyzing..."
-        
-        with st.spinner(spinner_message):
-            try:
-                # Generate SQL from the user's question
-                sql_query = generate_sql_cached(question=user_input)
-                
-                # Mark SQL as initialized after first use
-                st.session_state.sql_initialized = True
-                
-                # Execute the SQL if valid
-                if sql_query and is_sql_valid_cached(sql=sql_query):
-                    try:
-                        # Run the SQL query with our safe wrapper
-                        data_result = safe_run_sql(sql_query, user_input)
-                        
-                        # Format the DataFrame if results were returned
-                        if data_result is not None and not data_result.empty:
-                            # Set row indices to start from 1
-                            data_result.index = np.arange(1, len(data_result) + 1)
-                    except Exception as e:
-                        # This shouldn't be hit due to our wrapper, but just in case
-                        sql_error = "There was an error executing the SQL. The Data Analyst couldn't answer this question."
-                else:
-                    # SQL not valid or not generated
-                    sql_error = "SQL query not applicable for this question"
-            except Exception as e:
-                # Catch any other errors in the data analysis process
-                sql_error = "The Data Analyst couldn't process this query."
-    
-    # Step 2: Process the user input through the Mem0 agent
+    # Process the user input through the enhanced Companion (now includes data analysis)
     with st.spinner("Business Architecture AI Agent is thinking..."):
-        # If we have data results, include them in the context for the companion
-        if data_result is not None:
-            # For now, we'll convert the DataFrame to markdown to include in the prompt
-            # In a real implementation, you might want to add this as a special parameter to the agent
-            data_context = f"Data Analysis Results:\n{data_result.to_markdown()}"
-            # The actual implementation would depend on how the Companion class accepts additional context
-            response = st.session_state.companion.process_message(f"{user_input}\n\nContext: {data_context}")
+        # The Companion now handles data analysis automatically
+        result = st.session_state.companion.process_message(user_input)
+        
+        # Handle the new response format
+        if isinstance(result, dict) and "response" in result:
+            response = result["response"]
+            data_analysis = result.get("data_analysis")
         else:
-            # Process without data context
-            response = st.session_state.companion.process_message(user_input)
+            # Fallback for simple string response (shouldn't happen with new Companion)
+            response = str(result)
+            data_analysis = None
         
         # Fix spacing issues in revenue text formatting
         response = fix_revenue_text_spacing(response)
@@ -355,14 +281,12 @@ def process_input(user_input):
     st.session_state.messages.append({"role": "user", "content": user_input})
     st.session_state.messages.append({"role": "assistant", "content": response})
     
-    # If we have data results, store them in the message for display
-    if data_result is not None:
-        st.session_state.messages[-1]["data"] = data_result
-        st.session_state.messages[-1]["sql"] = sql_query
-    
-    # If there was a SQL error, store it in the message for display
-    if sql_error:
-        st.session_state.messages[-1]["sql_error"] = sql_error
+    # If we have data analysis results, store them in the message for display
+    if data_analysis:
+        st.session_state.messages[-1]["data"] = data_analysis.get("results", [])
+        st.session_state.messages[-1]["sql"] = data_analysis.get("sql", "")
+        st.session_state.messages[-1]["row_count"] = data_analysis.get("row_count", 0)
+        st.session_state.messages[-1]["execution_time"] = data_analysis.get("execution_time_ms", 0)
     
     # Set flag to indicate we need to generate follow-up questions after rendering
     st.session_state.waiting_for_followup = True
@@ -508,11 +432,11 @@ with st.sidebar:
 if st.session_state.user_id:
     # Display chat header
     st.title("Elevate AI Companion")
-    st.caption("An intelligent business strategist with memory and data analysis capabilities")
+    st.caption("An intelligent business strategist with integrated data analysis and memory capabilities")
     
     # Check for the trigger_warm_start flag and process the warm start prompt
     if st.session_state.trigger_warm_start:
-        initial_prompt = "Give me a status of the most recent financial milestones and business risks, and show me the revenue for the last quarter, be succint"
+        initial_prompt = "Give me a status of the most recent financial milestones and business risks, and show me the revenue for the last quarter, be succinct"
         st.session_state.trigger_warm_start = False
         process_input(initial_prompt)
     
@@ -523,31 +447,46 @@ if st.session_state.user_id:
             formatted_content = fix_revenue_text_spacing(message["content"])
             st.write(formatted_content)
             
-            # If there was a SQL error, display it as an info message with a friendly message
-            if "sql_error" in message:
-                # Extract the error type for more specific messages
-                error_msg = message["sql_error"]
-                
-                if "compilation error" in error_msg.lower() or "syntax error" in error_msg.lower():
-                    st.info("There was an error compiling the SQL. The Data Analyst couldn't answer this question.")
-                elif "execution error" in error_msg.lower():
-                    st.info("There was an error executing the SQL. The Data Analyst couldn't answer this question.")
-                else:
-                    st.info("The Data Analyst couldn't answer this question with SQL.")
-            
             # If this message has data attached, display it
-            if "data" in message and message["data"] is not None:
-                st.subheader("Data Table")
-                # Format and display the data
-                formatted_df = format_numeric_values(message["data"])
-                st.dataframe(formatted_df, use_container_width=True)
+            if "data" in message and message["data"]:
+                st.subheader("Data Analysis Results")
                 
-                # Show the SQL query used
-                with st.expander("SQL Query"):
-                    st.code(message["sql"], language="sql")
-                
-                # Create visualization
-                create_visualization(message["data"])
+                # Convert list of dictionaries to DataFrame for display
+                try:
+                    df = pd.DataFrame(message["data"])
+                    
+                    if not df.empty:
+                        # Set row indices to start from 1
+                        df.index = np.arange(1, len(df) + 1)
+                        
+                        # Format and display the data
+                        formatted_df = format_numeric_values(df)
+                        st.dataframe(formatted_df, use_container_width=True)
+                        
+                        # Show query metadata
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("Rows Returned", message.get("row_count", len(df)))
+                        with col2:
+                            st.metric("Execution Time", f"{message.get('execution_time', 0)}ms")
+                        with col3:
+                            st.metric("Columns", len(df.columns))
+                        
+                        # Show the SQL query used
+                        if "sql" in message and message["sql"]:
+                            with st.expander("SQL Query"):
+                                st.code(message["sql"], language="sql")
+                        
+                        # Create visualization
+                        create_visualization(df)
+                    else:
+                        st.info("Query executed successfully but returned no data.")
+                        
+                except Exception as e:
+                    st.error(f"Error displaying data: {e}")
+                    # Show raw data as fallback
+                    with st.expander("Raw Data"):
+                        st.json(message["data"])
     
     # Check if we need to process follow-up questions after displaying the response
     if st.session_state.waiting_for_followup:
@@ -566,27 +505,17 @@ if st.session_state.user_id:
         st.write("**Processing Question:**")
         st.info(st.session_state.selected_follow_up)
     
-    # Chat input area with data analyst toggle
-    col1, col2 = st.columns([5, 1])
+    # Chat input area
+    # Chat input
+    user_input = st.chat_input(
+        "Ask me anything about business strategy or your data...",
+        disabled=st.session_state.loading or not st.session_state.user_id or st.session_state.waiting_for_followup
+    )
     
-    with col2:
-        # Toggle button for Data Analyst Agent
-        st.session_state.data_analyst_enabled = st.toggle(
-            "Invite Data Analyst Agent", 
-            value=st.session_state.data_analyst_enabled
-        )
-    
-    with col1:
-        # Chat input
-        user_input = st.chat_input(
-            "Type your message here...",
-            disabled=st.session_state.loading or not st.session_state.user_id or st.session_state.waiting_for_followup
-        )
-        
-        # Process input when submitted
-        if user_input:
-            process_input(user_input)
-            st.rerun()
+    # Process input when submitted
+    if user_input:
+        process_input(user_input)
+        st.rerun()
     
     # Loading indicator
     if st.session_state.loading:
