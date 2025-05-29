@@ -1,8 +1,13 @@
- -- Query to get the average resolution time for each customer.
+-- Query to get the average resolution time for each customer.
+WITH customer_metrics AS (
+  SELECT
+    t.CUSTOMER_ID,
+    AVG(DATEDIFF('day', t.CREATED_DATE, t.UPDATED_DATE)) AS avg_resolution_days,
+    SUM(CASE WHEN f.ACCOUNT_TYPE = 'Income' THEN f.AMOUNT ELSE 0 END) AS total_revenue
   FROM
-    B2B_CORRELATED_DATA.CORRELATED_SCHEMA.SUPPORT_TICKETS t
+    DEMO_V4.CORRELATED_SCHEMA.SUPPORT_TICKETS t
   JOIN
-    B2B_CORRELATED_DATA.CORRELATED_SCHEMA.FINANCIAL_DATA f ON t.CUSTOMER_ID = f.CUSTOMER_ID
+    DEMO_V4.CORRELATED_SCHEMA.FINANCIAL_DATA f ON t.CUSTOMER_ID = f.CUSTOMER_ID
   GROUP BY
     t.CUSTOMER_ID
 )

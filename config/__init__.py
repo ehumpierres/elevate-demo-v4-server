@@ -14,7 +14,7 @@ SNOWFLAKE_USER = os.environ.get("SNOWFLAKE_USER", "")
 SNOWFLAKE_ORG = os.environ.get("SNOWFLAKE_ORG", "")
 SNOWFLAKE_WAREHOUSE = os.environ.get("SNOWFLAKE_WAREHOUSE", "")
 SNOWFLAKE_ROLE = os.environ.get("SNOWFLAKE_ROLE", "")
-SNOWFLAKE_DATABASE = os.environ.get("SNOWFLAKE_DATABASE", "")
+SNOWFLAKE_DATABASE = os.environ.get("SNOWFLAKE_DATABASE", "DEMO_V4")
 SNOWFLAKE_SCHEMA = os.environ.get("SNOWFLAKE_SCHEMA", "")
 SNOWFLAKE_PRIVATE_KEY_PATH = os.environ.get("SNOWFLAKE_PRIVATE_KEY_PATH", "snowflake_keys/rsa_key.p8")
 

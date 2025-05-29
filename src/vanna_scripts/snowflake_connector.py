@@ -15,7 +15,7 @@ from config.config import (
     SNOWFLAKE_ORG,
     SNOWFLAKE_PRIVATE_KEY_PATH,
     SNOWFLAKE_PRIVATE_KEY_BASE64,
-    SNOWFLAKE_MEMORY_DATABASE,
+    SNOWFLAKE_DATABASE,
     SNOWFLAKE_MEMORY_SCHEMA
 )
 
@@ -45,7 +45,7 @@ class SnowflakeConnector:
         self.snowflake_org = snowflake_org or SNOWFLAKE_ORG
         self.snowflake_private_key_path = snowflake_private_key_path or SNOWFLAKE_PRIVATE_KEY_PATH
         self.snowflake_private_key_base64 = snowflake_private_key_base64 or SNOWFLAKE_PRIVATE_KEY_BASE64
-        self.memory_database = memory_database or SNOWFLAKE_MEMORY_DATABASE
+        self.memory_database = memory_database or SNOWFLAKE_DATABASE
         self.memory_schema = memory_schema or SNOWFLAKE_MEMORY_SCHEMA
         self.conn = None
         self.p_key = None  # Will hold the loaded private key
