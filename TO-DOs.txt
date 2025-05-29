@@ -1,6 +1,6 @@
 ### To dos as of 5/28
 - Update the training documents for Vanna, check training function, plus consider creating functions for storing training data in snowflake (need to test ChromaDB in Render disk to make decision)
-- Figure out Mem0 connection for each new demo, is it separate? Yes, needs an org and project ids
+- ***DONE*** Figure out Mem0 connection for each new demo, is it separate? Yes, needs an org and project ids
 - Turn Vanna into a tool that the other assistants can call (See PRD I started using Claude)
     -- If this proves to be hard, then hack it by having the motion analyst request data, then I manually run the text to sql analyst, and then feed the results to the motion analyst
 - For demo, add and AI assistant selector switch in the streamlit UI (before we have an embeddings-based assistant selector)
