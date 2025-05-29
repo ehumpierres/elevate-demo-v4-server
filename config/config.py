@@ -9,6 +9,8 @@ load_dotenv()
 
 # API Keys
 MEM0_API_KEY = os.getenv("MEM0_API_KEY")
+MEM0_ORG_ID = os.getenv("MEM0_ORG_ID")
+MEM0_PROJECT_ID = os.getenv("MEM0_PROJECT_ID")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 # Agent Settings

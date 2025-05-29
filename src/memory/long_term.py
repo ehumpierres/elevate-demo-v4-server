@@ -5,14 +5,18 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from mem0 import MemoryClient
-from config.config import MEM0_API_KEY, OUTPUT_FORMAT
+from config.config import MEM0_API_KEY, MEM0_ORG_ID, MEM0_PROJECT_ID, OUTPUT_FORMAT
 
 class LongTermMemory:
     """Manages the long-term memory using Mem0."""
     
     def __init__(self):
         """Initialize the Mem0 client."""
-        self.mem0_client = MemoryClient(api_key=MEM0_API_KEY)
+        self.mem0_client = MemoryClient(
+            api_key=MEM0_API_KEY,
+            org_id=MEM0_ORG_ID,
+            project_id=MEM0_PROJECT_ID
+        )
     
     def store_memory(self, content, entity_id, is_agent=False):
         """
