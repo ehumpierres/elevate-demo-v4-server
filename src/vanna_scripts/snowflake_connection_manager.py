@@ -211,6 +211,16 @@ class SnowflakeConnectionManager:
         """Run a simple query to verify the connection works"""
         try:
             cursor = self.conn.cursor()
+            
+            # Set database and schema context to ensure they're available for queries
+            if self.database:
+                cursor.execute(f"USE DATABASE {self.database}")
+                logger.debug(f"Set database context to: {self.database}")
+            
+            if self.schema:
+                cursor.execute(f"USE SCHEMA {self.schema}")
+                logger.debug(f"Set schema context to: {self.schema}")
+            
             cursor.execute("SELECT CURRENT_USER(), CURRENT_ROLE(), CURRENT_WAREHOUSE(), CURRENT_DATABASE(), CURRENT_SCHEMA()")
             result = cursor.fetchone()
             cursor.close()
@@ -434,6 +444,22 @@ class SnowflakeConnectionManager:
         if not self.is_connection_active():
             logger.info("Connection not active in get_connection(), reconnecting...")
             self.reconnect()
+        
+        # Ensure database and schema context are set
+        try:
+            cursor = self.conn.cursor()
+            if self.database:
+                cursor.execute(f"USE DATABASE {self.database}")
+                logger.debug(f"Ensured database context: {self.database}")
+            
+            if self.schema:
+                cursor.execute(f"USE SCHEMA {self.schema}")
+                logger.debug(f"Ensured schema context: {self.schema}")
+            
+            cursor.close()
+        except Exception as e:
+            logger.warning(f"Could not set database/schema context: {e}")
+        
         return self.conn
     
     def close(self):

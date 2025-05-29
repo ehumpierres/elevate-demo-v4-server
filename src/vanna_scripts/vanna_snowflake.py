@@ -116,10 +116,14 @@ class VannaSnowflake:
             conn = self.snowflake_connection.get_connection()
             cursor = conn.cursor()
             
-            # Get all tables in the current schema
+            # Ensure database and schema context are set
+            cursor.execute(f"USE DATABASE {SNOWFLAKE_DATABASE}")
+            cursor.execute(f"USE SCHEMA {SNOWFLAKE_SCHEMA}")
+            
+            # Get all tables in the current schema using fully qualified names
             cursor.execute(f"""
                 SELECT table_name 
-                FROM information_schema.tables 
+                FROM {SNOWFLAKE_DATABASE}.information_schema.tables 
                 WHERE table_schema = '{SNOWFLAKE_SCHEMA}'
             """)
             
