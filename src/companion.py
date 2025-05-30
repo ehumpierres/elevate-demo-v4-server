@@ -26,16 +26,18 @@ class Companion:
     to create a coherent conversation experience with database querying capabilities.
     """
     
-    def __init__(self, user_id):
+    def __init__(self, user_id, analyst_type="Arabella (Business Architect)"):
         """
         Initialize the companion.
         
         Args:
             user_id: The ID of the user
+            analyst_type: The type of analyst to use (default: "Arabella (Business Architect)")
         """
         self.user_id = user_id
+        self.analyst_type = analyst_type
         self.memory_manager = MemoryManager(user_id)
-        self.llm_api = LlmApi()
+        self.llm_api = LlmApi(analyst_type=analyst_type)
         self.vanna_wrapper = None  # Initialize lazily when needed
         self.data_analysis_enabled = True  # Enable data analysis by default
     
@@ -259,7 +261,25 @@ def main():
     print("Type 'exit' to end the conversation.\n")
     
     user_id = input("Please enter a username to identify you: ")
-    companion = Companion(user_id)
+    
+    # Analyst selection
+    print("\nSelect your AI Analyst:")
+    print("1. Arabella (Business Architect) - General business strategy expert")
+    print("2. Sales Motion Strategy Agent - Specialized in sales motion optimization")
+    
+    while True:
+        choice = input("Enter your choice (1 or 2): ").strip()
+        if choice == "1":
+            analyst_type = "Arabella (Business Architect)"
+            break
+        elif choice == "2":
+            analyst_type = "Sales Motion Strategy Agent"
+            break
+        else:
+            print("Invalid choice. Please enter 1 or 2.")
+    
+    print(f"\nInitializing {analyst_type}...")
+    companion = Companion(user_id, analyst_type=analyst_type)
     
     # Test data connection
     print("\n🔍 Testing data connection...")

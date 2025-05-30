@@ -21,6 +21,10 @@ from config.config import update_model, OPENROUTER_MODEL, OPENROUTER_API_URL, AP
 # Import LLM API for generating follow-up questions
 from src.llm_api import LlmApi
 
+# Import persona modules for analyst selection
+from config.persona import get_system_prompt as get_arabella_prompt
+from config.motions_analyst import get_system_prompt as get_motions_analyst_prompt
+
 # Import Vanna functionality for data analysis (now integrated into Companion)
 from src.ui.vanna_calls import (
     clear_all_caches,
@@ -64,6 +68,10 @@ if "last_user_input" not in st.session_state:
 # Add a new state variable for selected follow-up question
 if "selected_follow_up" not in st.session_state:
     st.session_state.selected_follow_up = None
+
+# Add session state for analyst selection
+if "selected_analyst" not in st.session_state:
+    st.session_state.selected_analyst = "Arabella (Business Architect)"
 
 # Page configuration
 st.set_page_config(
@@ -261,7 +269,7 @@ def process_input(user_input):
     st.session_state.loading = True
     
     # Process the user input through the enhanced Companion (now includes data analysis)
-    with st.spinner("Business Architecture AI Agent is thinking..."):
+    with st.spinner("AI Assistant is thinking..."):
         # The Companion now handles data analysis automatically
         result = st.session_state.companion.process_message(user_input)
         
@@ -308,20 +316,38 @@ with st.sidebar:
         # Regular start button
         if col1.button("Start Session") and user_id:
             st.session_state.user_id = user_id
-            st.session_state.companion = Companion(user_id)
+            st.session_state.companion = Companion(user_id, analyst_type=st.session_state.selected_analyst)
             st.session_state.llm_api = LlmApi()  # Initialize LLM API for follow-up questions
             st.rerun()
         
         # Warm start button
         if col2.button("Warm Start") and user_id:
             st.session_state.user_id = user_id
-            st.session_state.companion = Companion(user_id)
+            st.session_state.companion = Companion(user_id, analyst_type=st.session_state.selected_analyst)
             st.session_state.llm_api = LlmApi()  # Initialize LLM API for follow-up questions
             # Set a flag to trigger the warm start prompt after rerun
             st.session_state.trigger_warm_start = True
             st.rerun()
     else:
         st.write(f"Active User: **{st.session_state.user_id}**")
+        
+        # Analyst selector
+        st.subheader("AI Analyst")
+        analyst_options = ["Arabella (Business Architect)", "Sales Motion Strategy Agent"]
+        selected_analyst = st.selectbox(
+            "Select AI Analyst:",
+            options=analyst_options,
+            index=analyst_options.index(st.session_state.selected_analyst),
+            key="analyst_selector"
+        )
+        
+        # Update analyst if changed (this will require reinitializing the companion)
+        if selected_analyst != st.session_state.selected_analyst:
+            st.session_state.selected_analyst = selected_analyst
+            # Reinitialize companion with new analyst
+            if st.session_state.companion:
+                st.session_state.companion = Companion(st.session_state.user_id, analyst_type=selected_analyst)
+                st.success(f"Switched to {selected_analyst}")
         
         # Model selector
         st.subheader("Model Settings")
@@ -430,8 +456,9 @@ with st.sidebar:
 
 # Main content area - only show if user is identified
 if st.session_state.user_id:
-    # Display chat header
-    st.title("Elevate AI Companion")
+    # Display chat header with selected analyst
+    analyst_name = st.session_state.selected_analyst
+    st.title(f"Elevate AI Companion - {analyst_name}")
     st.caption("An intelligent business strategist with integrated data analysis and memory capabilities")
     
     # Check for the trigger_warm_start flag and process the warm start prompt

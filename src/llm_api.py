@@ -13,17 +13,30 @@ from config.config import (
     API_TIMEOUT,
     DEFAULT_MAX_COMPLETION_TOKENS  # Import the new config variable
 )
-from config.persona import get_system_prompt
+from config.persona import get_system_prompt as get_arabella_prompt
+from config.motions_analyst import get_system_prompt as get_motions_analyst_prompt
 
 class LlmApi:
     """Handles interactions with the LLM API."""
     
-    def __init__(self):
-        """Initialize the API connection."""
+    def __init__(self, analyst_type="Arabella (Business Architect)"):
+        """
+        Initialize the API connection.
+        
+        Args:
+            analyst_type: The type of analyst to use for generating responses
+        """
         self.headers = {
             "Authorization": f"Bearer {OPENROUTER_API_KEY}",
             "Content-Type": "application/json"
         }
+        self.analyst_type = analyst_type
+        
+        # Set the appropriate system prompt function based on analyst type
+        if analyst_type == "Sales Motion Strategy Agent":
+            self.get_system_prompt = get_motions_analyst_prompt
+        else:  # Default to Arabella
+            self.get_system_prompt = get_arabella_prompt
     
     def generate_response(self, user_message, user_memories, companion_memories, recent_conversation, max_tokens=DEFAULT_MAX_COMPLETION_TOKENS):
         """
@@ -40,7 +53,7 @@ class LlmApi:
             The generated response from the LLM
         """
         # Create the system prompt with all context
-        system_prompt = get_system_prompt(user_memories, companion_memories, recent_conversation)
+        system_prompt = self.get_system_prompt(user_memories, companion_memories, recent_conversation)
         
         # Prepare the payload
         payload = {

@@ -3,8 +3,9 @@
 - ***DONE*** Figure out Mem0 connection for each new demo, is it separate? Yes, needs an org and project ids
 - ***DONE, BUT NEED TO TRAIN IT BETTER***Turn Vanna into a tool that the other assistants can call (See PRD I started using Claude)
     -- If this proves to be hard, then hack it by having the motion analyst request data, then I manually run the text to sql analyst, and then feed the results to the motion analyst
-- For demo, add and AI assistant selector switch in the streamlit UI (before we have an embeddings-based assistant selector)
+- ***DONE*** For demo, add and AI assistant selector switch in the streamlit UI (before we have an embeddings-based assistant selector)
 
 
 ### Later
+- Embeddings based AI assistant selector
 - Create paper trail citation system. See PRD here that I created with Claude
