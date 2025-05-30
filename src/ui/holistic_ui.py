@@ -426,6 +426,83 @@ with st.sidebar:
                     with st.expander("Error Details"):
                         st.code(traceback.format_exc(), language="python")
         
+        # Train Vanna.AI button
+        if st.button("🎓 Train Vanna.AI Model"):
+            with st.spinner("Training Vanna.AI model... This may take several minutes."):
+                try:
+                    # Import and initialize VannaSnowflake for training
+                    from src.vanna_scripts.vanna_snowflake import VannaSnowflake
+                    
+                    # Show progress steps
+                    progress_bar = st.progress(0)
+                    status_text = st.empty()
+                    
+                    status_text.text("🔗 Testing Snowflake connection...")
+                    progress_bar.progress(10)
+                    
+                    # Initialize VannaSnowflake
+                    vanna = VannaSnowflake()
+                    
+                    # Test connection first
+                    connection_test = vanna.test_connection(detailed=True)
+                    
+                    if not connection_test.get("success", False):
+                        st.error(f"❌ Connection test failed: {connection_test.get('error', 'Unknown error')}")
+                        progress_bar.empty()
+                        status_text.empty()
+                    else:
+                        status_text.text(f"✅ Connected to {connection_test['database']}.{connection_test['schema']}")
+                        progress_bar.progress(30)
+                        
+                        status_text.text("🎓 Training AI model on database schema and examples...")
+                        progress_bar.progress(50)
+                        
+                        # Run training
+                        training_result = vanna.train()
+                        
+                        if training_result:
+                            progress_bar.progress(90)
+                            status_text.text("📊 Getting training statistics...")
+                            
+                            # Get training statistics
+                            try:
+                                from src.vanna_scripts.show_training_data import TrainingDataViewer
+                                viewer = TrainingDataViewer()
+                                stats = viewer.get_stats()
+                                
+                                progress_bar.progress(100)
+                                status_text.text("✅ Training completed successfully!")
+                                
+                                st.success("🎉 Vanna.AI model training completed successfully!")
+                                
+                                # Display training statistics
+                                st.info(f"""
+                                **Training Summary:**
+                                - Total entries: {stats['total_entries']}
+                                - DDL statements: {stats['ddl_count']}
+                                - Documentation entries: {stats['documentation_count']}
+                                - SQL examples: {stats['sql_count']}
+                                - Q&A pairs: {stats['qa_pairs_count']}
+                                """)
+                                
+                            except Exception as e:
+                                st.warning(f"⚠️ Could not get training statistics: {e}")
+                                st.success("✅ Training completed successfully!")
+                        else:
+                            st.error("❌ Training failed!")
+                        
+                        # Close connections
+                        vanna.close()
+                        
+                        # Clear progress indicators
+                        progress_bar.empty()
+                        status_text.empty()
+                        
+                except Exception as e:
+                    st.error(f"❌ Training process failed: {str(e)}")
+                    with st.expander("Error Details"):
+                        st.code(traceback.format_exc(), language="python")
+        
         # Show current Snowflake environment settings
         with st.expander("Snowflake Configuration"):
             # Get environment variables related to Snowflake (hide sensitive values)
