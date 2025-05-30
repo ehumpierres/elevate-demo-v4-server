@@ -80,6 +80,12 @@ class VannaSnowflake:
     def _init_vanna(self):
         """Initialize Vanna.AI with ChromaDB and OpenAI."""
         try:
+            logger.info("🔄 Initializing Vanna.AI...")
+            logger.debug(f"OpenAI API Key available: {bool(self.openai_api_key)}")
+            logger.debug(f"Model name: {VANNA_MODEL_NAME}")
+            logger.debug(f"Collection name: {CHROMA_COLLECTION_NAME}")
+            logger.debug(f"Persistence directory: {CHROMA_PERSISTENCE_DIRECTORY}")
+            
             # Import the correct classes from vanna
             from vanna.openai.openai_chat import OpenAI_Chat
             from vanna.chromadb.chromadb_vector import ChromaDB_VectorStore
@@ -91,16 +97,29 @@ class VannaSnowflake:
                     OpenAI_Chat.__init__(self, config=config)
             
             # Initialize Vanna with ChromaDB and OpenAI
-            self.vanna_ai = MyVanna(config={
+            vanna_config = {
                 'api_key': self.openai_api_key,
                 'model': VANNA_MODEL_NAME,
                 'collection_name': CHROMA_COLLECTION_NAME,
                 'persist_directory': CHROMA_PERSISTENCE_DIRECTORY
-            })
+            }
             
-            logger.info(f"Initialized Vanna.AI with model: {VANNA_MODEL_NAME}")
+            logger.debug(f"Vanna config: {vanna_config}")
+            logger.info("🚀 Creating MyVanna instance...")
+            
+            self.vanna_ai = MyVanna(config=vanna_config)
+            
+            logger.info(f"✅ Initialized Vanna.AI with model: {VANNA_MODEL_NAME}")
+            
+            # Test that the vanna_ai instance is working
+            if hasattr(self.vanna_ai, 'generate_sql'):
+                logger.info("✅ Vanna.AI generate_sql method is available")
+            else:
+                logger.warning("⚠️ Vanna.AI generate_sql method is not available!")
+                
         except Exception as e:
-            logger.error(f"Error initializing Vanna.AI: {e}")
+            logger.error(f"❌ Error initializing Vanna.AI: {e}")
+            logger.debug("Vanna initialization exception details:", exc_info=True)
             raise
     
     @auto_reconnect(max_retries=3)
@@ -216,10 +235,28 @@ class VannaSnowflake:
             Generated SQL query
         """
         try:
+            logger.info(f"🔍 VannaSnowflake.generate_sql() called with: {question[:100]}...")
+            logger.debug(f"Full question: {question}")
+            
+            # Check if vanna_ai is available
+            if not self.vanna_ai:
+                logger.error("❌ self.vanna_ai is None!")
+                raise ValueError("Vanna AI instance not initialized")
+            
+            logger.info("🚀 Calling self.vanna_ai.generate_sql()...")
             sql = self.vanna_ai.generate_sql(question=question)
+            
+            logger.info(f"✅ self.vanna_ai.generate_sql() completed")
+            logger.info(f"📊 Generated SQL length: {len(sql) if sql else 0} characters")
+            logger.debug(f"Generated SQL: {sql}")
+            
+            if not sql or len(sql.strip()) == 0:
+                logger.warning("⚠️ Generated SQL is empty!")
+                
             return sql
         except Exception as e:
-            logger.error(f"Error generating SQL: {e}")
+            logger.error(f"❌ Error generating SQL: {e}")
+            logger.debug(f"generate_sql exception details:", exc_info=True)
             raise
     
     @auto_reconnect(max_retries=3)
@@ -251,19 +288,41 @@ class VannaSnowflake:
             Dictionary with SQL query and results
         """
         try:
+            logger.info(f"🔍 VannaSnowflake.ask() called with: {question[:100]}...")
+            logger.debug(f"Full question: {question}")
+            
             # Generate SQL from question
+            logger.info("🔧 Step 1: Generating SQL...")
             sql = self.generate_sql(question=question)
             
+            if not sql or len(sql.strip()) == 0:
+                logger.error("❌ Step 1 failed: Generated SQL is empty!")
+                return {
+                    "question": question,
+                    "error": "Failed to generate SQL - empty response from AI model"
+                }
+            
+            logger.info(f"✅ Step 1 complete: SQL generated ({len(sql)} chars)")
+            
             # Execute the SQL
+            logger.info("🚀 Step 2: Executing SQL...")
             results = self.execute_sql(sql)
             
-            return {
+            logger.info(f"✅ Step 2 complete: SQL executed ({len(results) if results else 0} rows)")
+            logger.debug(f"First few results: {results[:3] if results else 'No results'}")
+            
+            response = {
                 "question": question,
                 "sql": sql,
                 "results": results
             }
+            
+            logger.info(f"✅ VannaSnowflake.ask() completed successfully")
+            return response
+            
         except Exception as e:
-            logger.error(f"Error processing question: {e}")
+            logger.error(f"❌ Error processing question: {e}")
+            logger.debug(f"ask method exception details:", exc_info=True)
             return {
                 "question": question,
                 "error": str(e)

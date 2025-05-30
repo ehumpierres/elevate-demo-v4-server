@@ -43,10 +43,13 @@ class Companion:
         """Get or create VannaToolWrapper instance (lazy initialization)."""
         if self.vanna_wrapper is None:
             try:
+                print("🔄 Companion: Initializing VannaToolWrapper...")
                 self.vanna_wrapper = VannaToolWrapper()
-                print("✅ VannaToolWrapper initialized successfully")
+                print("✅ Companion: VannaToolWrapper initialized successfully")
             except Exception as e:
-                print(f"⚠️ Failed to initialize VannaToolWrapper: {e}")
+                print(f"❌ Companion: Failed to initialize VannaToolWrapper: {e}")
+                import traceback
+                print(f"Full error: {traceback.format_exc()}")
                 return None
         return self.vanna_wrapper
     
@@ -94,27 +97,42 @@ class Companion:
         Returns:
             Dictionary with analysis results or None if failed
         """
+        print(f"🔍 Companion: Starting data analysis for: {user_message[:100]}...")
+        
         wrapper = self._get_vanna_wrapper()
         if not wrapper:
+            print("❌ Companion: VannaToolWrapper not available")
             return None
         
         try:
-            print(f"🔍 Analyzing data for: {user_message[:100]}...")
+            print(f"🚀 Companion: Calling wrapper.snowflake_query()...")
             result = wrapper.snowflake_query(
                 question=user_message,
                 execute_query=True,
                 max_results=100
             )
             
-            if result.get("success"):
-                print(f"✅ Data analysis successful: {result.get('row_count', 0)} rows returned")
-                return result
+            print(f"✅ Companion: wrapper.snowflake_query() completed")
+            print(f"📊 Companion: Result type: {type(result)}")
+            
+            if isinstance(result, dict):
+                if result.get("success"):
+                    print(f"✅ Companion: Data analysis successful: {result.get('row_count', 0)} rows returned")
+                    print(f"📊 Companion: SQL length: {len(result.get('sql', '')) if result.get('sql') else 0}")
+                    return result
+                else:
+                    print(f"❌ Companion: Data analysis failed: {result.get('error', 'Unknown error')}")
+                    print(f"Full result: {result}")
+                    return None
             else:
-                print(f"❌ Data analysis failed: {result.get('error', 'Unknown error')}")
+                print(f"❌ Companion: Unexpected result type: {type(result)}")
+                print(f"Result: {result}")
                 return None
                 
         except Exception as e:
-            print(f"❌ Error in data analysis: {e}")
+            print(f"❌ Companion: Error in data analysis: {e}")
+            import traceback
+            print(f"Full error: {traceback.format_exc()}")
             return None
     
     def process_message(self, user_message):

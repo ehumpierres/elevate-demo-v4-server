@@ -21,8 +21,23 @@ class VannaToolWrapper:
         Args:
             openai_api_key: The OpenAI API key to use. If None, it will be read from config.
         """
-        self.vanna = VannaSnowflake(openai_api_key)
-        logger.info("VannaToolWrapper initialized successfully")
+        logger.info("🔄 Initializing VannaToolWrapper...")
+        try:
+            logger.info("🚀 Creating VannaSnowflake instance...")
+            self.vanna = VannaSnowflake(openai_api_key)
+            logger.info("✅ VannaSnowflake instance created successfully")
+            
+            # Test that the vanna_ai instance is available
+            if hasattr(self.vanna, 'vanna_ai') and self.vanna.vanna_ai:
+                logger.info("✅ VannaSnowflake.vanna_ai is available")
+            else:
+                logger.warning("⚠️ VannaSnowflake.vanna_ai is not available!")
+                
+            logger.info("✅ VannaToolWrapper initialized successfully")
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize VannaToolWrapper: {e}")
+            logger.debug("VannaToolWrapper initialization exception:", exc_info=True)
+            raise
     
     def snowflake_query(
         self, 
@@ -46,6 +61,7 @@ class VannaToolWrapper:
         try:
             # Input validation
             if not question or not isinstance(question, str):
+                logger.error(f"Invalid question input: {type(question)} - {question}")
                 return {
                     "success": False,
                     "error": "Question must be a non-empty string",
@@ -53,6 +69,7 @@ class VannaToolWrapper:
                 }
             
             if len(question.strip()) == 0:
+                logger.error("Question is empty or only whitespace")
                 return {
                     "success": False,
                     "error": "Question cannot be empty or only whitespace",
@@ -61,67 +78,123 @@ class VannaToolWrapper:
             
             # Validate max_results
             if not isinstance(max_results, int) or max_results < 1 or max_results > 1000:
+                logger.error(f"Invalid max_results: {max_results}")
                 return {
                     "success": False,
                     "error": "max_results must be an integer between 1 and 1000",
                     "question": question
                 }
             
-            logger.info(f"Processing query: {question[:100]}...")
+            logger.info(f"🔍 VannaToolWrapper processing query: {question[:100]}...")
+            logger.debug(f"Full question: {question}")
+            logger.debug(f"Execute query: {execute_query}, Max results: {max_results}")
+            
+            # Check if vanna instance is available
+            if not self.vanna:
+                logger.error("VannaSnowflake instance is None!")
+                return {
+                    "success": False,
+                    "error": "VannaSnowflake instance not available",
+                    "question": question
+                }
             
             if execute_query:
                 # Use the full ask() method that generates SQL and executes it
-                result = self.vanna.ask(question)
-                
-                if "error" in result:
+                logger.info("🚀 Calling vanna.ask() method...")
+                try:
+                    result = self.vanna.ask(question)
+                    logger.info(f"✅ vanna.ask() completed: {type(result)}")
+                    logger.debug(f"vanna.ask() result keys: {list(result.keys()) if isinstance(result, dict) else 'Not a dict'}")
+                    
+                    if isinstance(result, dict):
+                        if "error" in result:
+                            logger.error(f"❌ vanna.ask() returned error: {result['error']}")
+                            return {
+                                "success": False,
+                                "question": question,
+                                "error": result["error"],
+                                "execution_time_ms": int((time.time() - start_time) * 1000)
+                            }
+                        
+                        # Log what we got back
+                        sql = result.get("sql", "")
+                        results = result.get("results", [])
+                        logger.info(f"📊 Generated SQL length: {len(sql)} characters")
+                        logger.info(f"📊 Results count: {len(results) if results else 0}")
+                        logger.debug(f"Generated SQL: {sql[:500]}...")
+                        
+                        # Extract and format results
+                        # Truncate results if needed
+                        truncated_results = results[:max_results] if results else []
+                        has_more_results = len(results) > max_results if results else False
+                        
+                        # Extract metadata
+                        metadata = self._extract_query_metadata(sql)
+                        
+                        logger.info(f"✅ Query processing successful - returning {len(truncated_results)} rows")
+                        return {
+                            "success": True,
+                            "question": question,
+                            "sql": sql,
+                            "results": truncated_results,
+                            "row_count": len(truncated_results),
+                            "execution_time_ms": int((time.time() - start_time) * 1000),
+                            "metadata": {
+                                **metadata,
+                                "has_more_results": has_more_results,
+                                "total_rows_available": len(results) if results else 0
+                            }
+                        }
+                    else:
+                        logger.error(f"❌ vanna.ask() returned unexpected type: {type(result)}")
+                        return {
+                            "success": False,
+                            "question": question,
+                            "error": f"Unexpected response type from vanna.ask(): {type(result)}",
+                            "execution_time_ms": int((time.time() - start_time) * 1000)
+                        }
+                        
+                except Exception as e:
+                    logger.error(f"❌ Exception in vanna.ask(): {str(e)}")
+                    logger.debug(f"vanna.ask() exception details:", exc_info=True)
                     return {
                         "success": False,
                         "question": question,
-                        "error": result["error"],
+                        "error": f"Error in vanna.ask(): {str(e)}",
+                        "execution_time_ms": int((time.time() - start_time) * 1000)
+                    }
+            else:
+                # Only generate SQL without executing
+                logger.info("🔧 Calling vanna.generate_sql() method...")
+                try:
+                    sql = self.vanna.generate_sql(question)
+                    logger.info(f"✅ vanna.generate_sql() completed: {len(sql) if sql else 0} characters")
+                    logger.debug(f"Generated SQL: {sql}")
+                    
+                    metadata = self._extract_query_metadata(sql)
+                    
+                    return {
+                        "success": True,
+                        "question": question,
+                        "sql": sql,
+                        "results": None,
+                        "row_count": 0,
+                        "execution_time_ms": int((time.time() - start_time) * 1000),
+                        "metadata": metadata
+                    }
+                except Exception as e:
+                    logger.error(f"❌ Exception in vanna.generate_sql(): {str(e)}")
+                    logger.debug(f"vanna.generate_sql() exception details:", exc_info=True)
+                    return {
+                        "success": False,
+                        "question": question,
+                        "error": f"Error in vanna.generate_sql(): {str(e)}",
                         "execution_time_ms": int((time.time() - start_time) * 1000)
                     }
                 
-                # Extract and format results
-                sql = result.get("sql", "")
-                results = result.get("results", [])
-                
-                # Truncate results if needed
-                truncated_results = results[:max_results] if results else []
-                has_more_results = len(results) > max_results if results else False
-                
-                # Extract metadata
-                metadata = self._extract_query_metadata(sql)
-                
-                return {
-                    "success": True,
-                    "question": question,
-                    "sql": sql,
-                    "results": truncated_results,
-                    "row_count": len(truncated_results),
-                    "execution_time_ms": int((time.time() - start_time) * 1000),
-                    "metadata": {
-                        **metadata,
-                        "has_more_results": has_more_results,
-                        "total_rows_available": len(results) if results else 0
-                    }
-                }
-            else:
-                # Only generate SQL without executing
-                sql = self.vanna.generate_sql(question)
-                metadata = self._extract_query_metadata(sql)
-                
-                return {
-                    "success": True,
-                    "question": question,
-                    "sql": sql,
-                    "results": None,
-                    "row_count": 0,
-                    "execution_time_ms": int((time.time() - start_time) * 1000),
-                    "metadata": metadata
-                }
-                
         except Exception as e:
-            logger.error(f"Error in snowflake_query: {str(e)}")
+            logger.error(f"❌ Unexpected error in snowflake_query: {str(e)}")
+            logger.debug(f"snowflake_query exception details:", exc_info=True)
             return {
                 "success": False,
                 "question": question,

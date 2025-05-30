@@ -5,12 +5,36 @@ import functools
 import base64
 import traceback
 import snowflake.connector
+from decimal import Decimal
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 
 # Configure logging with more detail
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+def convert_to_json_serializable(obj):
+    """
+    Convert objects to JSON-serializable formats.
+    
+    Args:
+        obj: The object to convert
+        
+    Returns:
+        JSON-serializable object
+    """
+    if isinstance(obj, Decimal):
+        # Convert Decimal to float
+        return float(obj)
+    elif isinstance(obj, dict):
+        # Recursively convert dictionary values
+        return {key: convert_to_json_serializable(value) for key, value in obj.items()}
+    elif isinstance(obj, (list, tuple)):
+        # Recursively convert list/tuple items
+        return [convert_to_json_serializable(item) for item in obj]
+    else:
+        # Return as-is for other types
+        return obj
 
 class SnowflakeConnectionManager:
     """
@@ -395,7 +419,11 @@ class SnowflakeConnectionManager:
                 results = []
                 row_count = 0
                 for row in cursor:
-                    results.append(dict(zip(columns, row)))
+                    # Convert row to dictionary and handle Decimal objects
+                    row_dict = dict(zip(columns, row))
+                    # Convert Decimal objects to JSON-serializable formats
+                    serializable_row = convert_to_json_serializable(row_dict)
+                    results.append(serializable_row)
                     row_count += 1
                 
                 logger.debug(f"Query returned {row_count} rows")
