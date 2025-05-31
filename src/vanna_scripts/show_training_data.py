@@ -27,6 +27,14 @@ class TrainingDataViewer:
             print(f"Error loading training data: {e}")
             self.training_data = pd.DataFrame()
 
+    def _is_natural_language_question(self, question_series):
+        """Helper method to identify natural language questions vs technical descriptions."""
+        return (
+            (question_series.notna()) & 
+            (question_series != '') &
+            (question_series.str.match(r'^\s*(?:What|How|Which|Who|Where|When|Why|Can|Could|Would|Should|Do|Does|Did|Is|Are|Was|Were)\b', case=False, na=False))
+        )
+
     def get_stats(self) -> dict:
         """Get statistics about the training data."""
         if self.training_data.empty:
@@ -41,12 +49,31 @@ class TrainingDataViewer:
         # Count by training_data_type
         type_counts = self.training_data['training_data_type'].value_counts().to_dict() if 'training_data_type' in self.training_data.columns else {}
         
+        # Distinguish between SQL examples and Q&A pairs based on training approach
+        qa_pairs_count = 0
+        sql_examples_count = 0
+        
+        if 'question' in self.training_data.columns and 'content' in self.training_data.columns:
+            # Q&A pairs: entries trained with both question and sql parameters
+            # These have natural language questions (starting with question words)
+            qa_pairs_mask = self._is_natural_language_question(self.training_data['question'])
+            qa_pairs_count = qa_pairs_mask.sum()
+            
+            # SQL examples: entries trained with only sql parameter (from .sql files)
+            # These may have technical descriptions but not natural language questions
+            sql_mask = (self.training_data['training_data_type'] == 'sql') & ~qa_pairs_mask
+            sql_examples_count = sql_mask.sum()
+        else:
+            # Fallback to original logic if columns are missing
+            qa_pairs_count = type_counts.get('question_answer', 0)
+            sql_examples_count = type_counts.get('sql', 0)
+        
         stats = {
             "total_entries": len(self.training_data),
             "ddl_count": type_counts.get('ddl', 0),
             "documentation_count": type_counts.get('documentation', 0),
-            "sql_count": type_counts.get('sql', 0),
-            "qa_pairs_count": type_counts.get('question_answer', 0)
+            "sql_count": sql_examples_count,
+            "qa_pairs_count": qa_pairs_count
         }
         return stats
 
@@ -93,12 +120,24 @@ class TrainingDataViewer:
                 subset = self.training_data[self.training_data['training_data_type'] == 'documentation']
                 self._display_section('Documentation', subset[['content']], max_rows)
             elif data_type == 'sql':
-                subset = self.training_data[self.training_data['training_data_type'] == 'sql']
+                # Show SQL examples (from .sql files) - entries without natural language questions
+                if 'question' in self.training_data.columns:
+                    qa_pairs_mask = self._is_natural_language_question(self.training_data['question'])
+                    subset = self.training_data[(self.training_data['training_data_type'] == 'sql') & ~qa_pairs_mask]
+                else:
+                    subset = self.training_data[self.training_data['training_data_type'] == 'sql']
                 self._display_section('SQL Examples', subset[['content']], max_rows)
             elif data_type == 'qa':
-                subset = self.training_data[self.training_data['training_data_type'] == 'question_answer']
-                self._display_section('Question-SQL Pairs', 
-                                    subset[['question', 'content']], max_rows)
+                # Show Q&A pairs (from JSON files) - entries with natural language questions
+                if 'question' in self.training_data.columns and 'content' in self.training_data.columns:
+                    qa_pairs_mask = self._is_natural_language_question(self.training_data['question'])
+                    subset = self.training_data[qa_pairs_mask]
+                    self._display_section('Question-SQL Pairs', 
+                                        subset[['question', 'content']], max_rows)
+                else:
+                    subset = self.training_data[self.training_data['training_data_type'] == 'question_answer']
+                    self._display_section('Question-SQL Pairs', 
+                                        subset[['question', 'content']], max_rows)
             else:
                 print(f"\nNo data available for type: {data_type}")
         else:

@@ -1,6 +1,5 @@
 import os
 #import vanna
-import chromadb
 import logging
 from typing import List, Dict, Any, Optional
 from config import *
@@ -28,12 +27,10 @@ class VannaSnowflake:
         self.openai_api_key = openai_api_key or OPENAI_API_KEY
         self.snowflake_connection = None
         self.vanna_ai = None
-        self.chroma_client = None
-        self.chroma_collection = None
+        # Removed redundant ChromaDB initialization - Vanna handles this internally
         
         # Initialize components
         self._init_snowflake()
-        self._init_chromadb()
         self._init_vanna()
         
     def _init_snowflake(self):
@@ -62,21 +59,6 @@ class VannaSnowflake:
             logger.debug(f"Connection error details: {traceback.format_exc()}")
             raise
             
-    def _init_chromadb(self):
-        """Initialize ChromaDB for vector storage."""
-        try:
-            self.chroma_client = chromadb.PersistentClient(path=CHROMA_PERSISTENCE_DIRECTORY)
-            
-            # Create or get the collection
-            self.chroma_collection = self.chroma_client.get_or_create_collection(
-                name=CHROMA_COLLECTION_NAME
-            )
-            
-            logger.info(f"Initialized ChromaDB collection: {CHROMA_COLLECTION_NAME}")
-        except Exception as e:
-            logger.error(f"Error initializing ChromaDB: {e}")
-            raise
-            
     def _init_vanna(self):
         """Initialize Vanna.AI with ChromaDB and OpenAI."""
         try:
@@ -101,7 +83,7 @@ class VannaSnowflake:
                 'api_key': self.openai_api_key,
                 'model': VANNA_MODEL_NAME,
                 'collection_name': CHROMA_COLLECTION_NAME,
-                'persist_directory': CHROMA_PERSISTENCE_DIRECTORY
+                'path': CHROMA_PERSISTENCE_DIRECTORY
             }
             
             logger.debug(f"Vanna config: {vanna_config}")
@@ -205,14 +187,16 @@ class VannaSnowflake:
             
             # Train QA pairs
             logger.info("Training Q&A pairs...")
-            for json_file in qa_pairs_path.glob("*.json"):
+            # Check for both .json and .JSON files (case-insensitive) and remove duplicates
+            json_files = list(set(qa_pairs_path.glob("*.json")) | set(qa_pairs_path.glob("*.JSON")))
+            for json_file in json_files:
                 with open(json_file, 'r', encoding='utf-8') as f:
                     qa_pairs = json.load(f)
                     for pair in qa_pairs:
                         try:
                             self.vanna_ai.train(
-                                question=json.dumps(pair["question"]), 
-                                sql=json.dumps(pair["sql"])
+                                question=pair["question"], 
+                                sql=pair["sql"]
                             )
                             logger.info(f"Trained Q&A pair from {json_file.name}: {pair['question'][:50]}...")
                         except Exception as e:
