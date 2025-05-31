@@ -34,7 +34,7 @@ SNOWFLAKE_MEMORY_SCHEMA = os.getenv("SNOWFLAKE_MEMORY_SCHEMA", "CORRELATED_SCHEM
 
 # API Settings
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
-OPENROUTER_MODEL = "openai/gpt-4o-2024-11-20"
+OPENROUTER_MODEL = "openai/o3"
 API_TIMEOUT = 30.0  # seconds
 
 # Token and Context Management Settings

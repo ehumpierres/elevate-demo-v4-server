@@ -332,7 +332,7 @@ with st.sidebar:
         st.write(f"Active User: **{st.session_state.user_id}**")
         
         # Analyst selector
-        st.subheader("AI Analyst")
+        st.subheader("AI Assistant")
         analyst_options = ["Arabella (Business Architect)", "Sales Motion Strategy Agent"]
         selected_analyst = st.selectbox(
             "Select AI Analyst:",
@@ -427,7 +427,7 @@ with st.sidebar:
                         st.code(traceback.format_exc(), language="python")
         
         # Train Vanna.AI button
-        if st.button("🎓 Train Vanna.AI Model"):
+        if st.button("🎓 Train SQL Model"):
             with st.spinner("Training Vanna.AI model... This may take several minutes."):
                 try:
                     # Import and initialize VannaSnowflake for training
