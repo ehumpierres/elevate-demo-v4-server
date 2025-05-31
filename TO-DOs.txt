@@ -4,6 +4,7 @@
 - ***DONE, BUT NEED TO TRAIN IT BETTER***Turn Vanna into a tool that the other assistants can call (See PRD I started using Claude)
     -- If this proves to be hard, then hack it by having the motion analyst request data, then I manually run the text to sql analyst, and then feed the results to the motion analyst
 - ***DONE*** For demo, add and AI assistant selector switch in the streamlit UI (before we have an embeddings-based assistant selector)
+- Ensure that Assisatn can answer the WHY of things based on data, may need to tweak system prompt
 
 
 ### Later

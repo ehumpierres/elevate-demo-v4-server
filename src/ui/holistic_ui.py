@@ -335,7 +335,7 @@ with st.sidebar:
         st.subheader("AI Assistant")
         analyst_options = ["Arabella (Business Architect)", "Sales Motion Strategy Agent"]
         selected_analyst = st.selectbox(
-            "Select AI Analyst:",
+            "Select AI Assistant:",
             options=analyst_options,
             index=analyst_options.index(st.session_state.selected_analyst),
             key="analyst_selector"
