@@ -10,3 +10,5 @@ mem0ai>=0.1.67
 httpx>=0.28.1
 python-dotenv>=1.0.1
 streamlit>=1.32.0 
+pandas>=2.0.0
+numpy>=1.24.0 
