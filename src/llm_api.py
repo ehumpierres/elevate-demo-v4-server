@@ -81,6 +81,14 @@ class LlmApi:
         print(f"Model used: {OPENROUTER_MODEL}")
         print(f"Max tokens setting: {max_tokens}")
         print(json.dumps(result, indent=2))
+        
+        # Check for token usage and potential truncation
+        if "usage" in result:
+            completion_tokens = result["usage"].get("completion_tokens", 0)
+            print(f"Completion tokens used: {completion_tokens}/{max_tokens}")
+            if completion_tokens >= max_tokens * 0.95:  # 95% of limit
+                print("⚠️ WARNING: Response may be truncated - approaching token limit!")
+        
         print("=======================================\n")
         
         # Check if the response has the expected structure

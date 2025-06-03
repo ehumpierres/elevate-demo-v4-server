@@ -35,14 +35,14 @@ SNOWFLAKE_MEMORY_SCHEMA = os.getenv("SNOWFLAKE_MEMORY_SCHEMA", "CORRELATED_SCHEM
 # API Settings
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 OPENROUTER_MODEL = "openai/o3"
-API_TIMEOUT = 30.0  # seconds
+API_TIMEOUT = 45.0  # seconds
 
 # Token and Context Management Settings
 # Default max completion tokens for API calls - used in llm_api.py as the default parameter
-DEFAULT_MAX_COMPLETION_TOKENS = 1500  # Default token limit if nothing else is specified
+DEFAULT_MAX_COMPLETION_TOKENS = 3000  # Increased from 1500 to allow longer responses
 
 # Actual completion tokens limit used in Companion - this overrides the default when called from companion.py
-COMPANION_MAX_COMPLETION_TOKENS = 1000  # Token limit for Business Architecture Agent responses
+COMPANION_MAX_COMPLETION_TOKENS = 2500  # Increased from 1000 to prevent truncation
 
 # Number of recent conversation messages to include in the prompt to reduce token usage
 # This determines how many short-term memory messages are passed to the API from companion.py
