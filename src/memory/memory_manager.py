@@ -54,15 +54,32 @@ class MemoryManager:
         Args:
             user_message: The user's message
             assistant_message: The assistant's response
+            
+        Returns:
+            Dictionary with success status for user and companion memory storage
         """
         conversation_content = [
             {"role": "user", "content": user_message},
             {"role": "assistant", "content": assistant_message}
         ]
         
+        print(f"\n[DEBUG] MemoryManager storing conversation:")
+        print(f"  User: {user_message[:100]}...")
+        print(f"  Assistant: {assistant_message[:100]}...")
+        
         # Store in long-term memory for both user and companion
-        self.long_term.store_memory(conversation_content, self.user_id)
-        self.long_term.store_memory(conversation_content, COMPANION_ID, is_agent=True)
+        user_success = self.long_term.store_memory(conversation_content, self.user_id)
+        companion_success = self.long_term.store_memory(conversation_content, COMPANION_ID, is_agent=True)
+        
+        print(f"\n[DEBUG] Memory storage results:")
+        print(f"  User memory stored: {'✅ Success' if user_success else '❌ Failed'}")
+        print(f"  Companion memory stored: {'✅ Success' if companion_success else '❌ Failed'}")
+        
+        return {
+            "user_memory_saved": user_success,
+            "companion_memory_saved": companion_success,
+            "overall_success": user_success and companion_success
+        }
     
     def get_relevant_memories(self, query):
         """

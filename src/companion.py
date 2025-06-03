@@ -63,7 +63,21 @@ class Companion:
             user_message: The user's message
             assistant_response: The assistant's response
         """
-        self.memory_manager.store_conversation(user_message, assistant_response)
+        try:
+            print(f"\n[DEBUG] Companion: Starting async memory storage...")
+            result = self.memory_manager.store_conversation(user_message, assistant_response)
+            
+            if result["overall_success"]:
+                print(f"✅ Companion: Long-term memory storage completed successfully")
+            else:
+                print(f"⚠️ Companion: Memory storage partially failed:")
+                print(f"   User memory: {'✅' if result['user_memory_saved'] else '❌'}")
+                print(f"   Companion memory: {'✅' if result['companion_memory_saved'] else '❌'}")
+                
+        except Exception as e:
+            print(f"❌ Companion: Error in async memory storage: {e}")
+            import traceback
+            print(f"   Full error: {traceback.format_exc()}")
     
     def _should_use_data_analysis(self, user_message):
         """
@@ -210,12 +224,14 @@ Please analyze these results and provide insights in your response. Reference th
         self.memory_manager.add_assistant_message(assistant_response)
         
         # Store the conversation in long-term memory asynchronously
+        print(f"\n[DEBUG] Companion: Initiating async memory storage thread...")
         memory_thread = threading.Thread(
             target=self._store_conversation_async,
             args=(user_message, assistant_response)
         )
         memory_thread.daemon = True
         memory_thread.start()
+        print(f"[DEBUG] Companion: Memory storage thread started")
         
         # Return response with optional data results
         response_data = {
