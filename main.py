@@ -7,7 +7,7 @@ import sys
 def main():
     """
     Main entry point for the Elevate AI Companion application.
-    This script helps run the Streamlit app located at src/ui/holistic_ui.py.
+    This script helps run the Streamlit app located at src/ui/executive_dashboard_2.py.
     """
     # Print welcome message
     print("=" * 80)
@@ -18,7 +18,7 @@ def main():
     root_dir = os.path.dirname(os.path.abspath(__file__))
     
     # Define the path to the Streamlit app
-    app_path = os.path.join(root_dir, "src", "ui", "holistic_ui.py")
+    app_path = os.path.join(root_dir, "src", "ui", "executive_dashboard_2.py")
     
     # Check if the app file exists
     if not os.path.exists(app_path):
