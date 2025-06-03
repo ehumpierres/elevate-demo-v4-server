@@ -106,6 +106,33 @@ def fix_revenue_text_spacing(text):
     
     return text
 
+# Function to clean markdown formatting from LLM responses
+def clean_markdown_formatting(text):
+    """Remove markdown formatting that doesn't render well in Streamlit"""
+    if not text:
+        return text
+    
+    # Remove bold formatting (**text** -> text)
+    text = re.sub(r'\*\*(.*?)\*\*', r'\1', text)
+    
+    # Remove italic formatting (*text* -> text) - but be careful not to remove bullet points
+    text = re.sub(r'(?<!\*)\*([^*\n]+?)\*(?!\*)', r'\1', text)
+    
+    # Clean up any remaining single asterisks that might be left over
+    # but preserve bullet points (lines starting with *)
+    lines = text.split('\n')
+    cleaned_lines = []
+    for line in lines:
+        # Don't clean asterisks at the beginning of lines (bullet points)
+        if line.strip().startswith('*'):
+            cleaned_lines.append(line)
+        else:
+            # Remove stray asterisks in the middle of sentences
+            cleaned_line = re.sub(r'(?<!\s)\*(?!\s)', '', line)
+            cleaned_lines.append(cleaned_line)
+    
+    return '\n'.join(cleaned_lines)
+
 # Function to format numeric values in DataFrames
 def format_numeric_values(df):
     """Format DataFrame numeric values with thousands separators and two decimal places"""
@@ -284,6 +311,9 @@ def process_input(user_input):
         
         # Fix spacing issues in revenue text formatting
         response = fix_revenue_text_spacing(response)
+        
+        # Clean markdown formatting that doesn't render well
+        response = clean_markdown_formatting(response)
     
     # Add the messages to the conversation history
     st.session_state.messages.append({"role": "user", "content": user_input})
@@ -547,8 +577,9 @@ if st.session_state.user_id:
     # Display chat messages
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
-            # Apply fix_revenue_text_spacing to all displayed messages to ensure proper formatting
+            # Apply both text formatting functions to all displayed messages to ensure proper formatting
             formatted_content = fix_revenue_text_spacing(message["content"])
+            formatted_content = clean_markdown_formatting(formatted_content)
             st.write(formatted_content)
             
             # If this message has data attached, display it
