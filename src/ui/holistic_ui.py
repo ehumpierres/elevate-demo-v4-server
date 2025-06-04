@@ -287,23 +287,32 @@ def handle_follow_up_click(question):
 
 # Function to process user input with streaming support
 def process_input_stream(user_input):
-    """Process user input with streaming response support"""
+    """Process user input with streaming response support and progressive UI feedback"""
     # Phase 1: Generate and display the streaming response
-    # Phase 2: Generate follow-up questions
+    # Phase 2: Generate follow-up questions (simplified, no background threading)
     
     # If we're in phase 2 (waiting for follow-up generation after displaying response)
     if st.session_state.waiting_for_followup:
+        # Generate follow-ups directly (no background threading to avoid Streamlit issues)
         with st.spinner("Generating follow-up questions..."):
-            # Get the latest response from the conversation history
-            latest_response = st.session_state.messages[-1]["content"]
-            follow_up_questions = generate_follow_up_questions(latest_response)
-            st.session_state.follow_up_questions = follow_up_questions
-            
-            # Reset the waiting flag and selected follow-up
-            st.session_state.waiting_for_followup = False
-            st.session_state.loading = False
-            st.session_state.selected_follow_up = None
-            st.session_state.is_streaming = False
+            try:
+                # Get the latest response from the conversation history
+                latest_response = st.session_state.messages[-1]["content"]
+                follow_up_questions = generate_follow_up_questions(latest_response)
+                st.session_state.follow_up_questions = follow_up_questions
+                
+                # Reset flags
+                st.session_state.waiting_for_followup = False
+                st.session_state.loading = False
+                st.session_state.selected_follow_up = None
+                st.session_state.is_streaming = False
+                
+            except Exception as e:
+                print(f"Error generating follow-up questions: {e}")
+                # Still reset flags even if follow-up generation fails
+                st.session_state.waiting_for_followup = False
+                st.session_state.loading = False
+                st.session_state.is_streaming = False
         return
         
     # Otherwise, we're in phase 1: process the input and generate a streaming response
@@ -313,20 +322,42 @@ def process_input_stream(user_input):
     # Add the user message to the conversation history first
     st.session_state.messages.append({"role": "user", "content": user_input})
     
-    # Display the user message
+    # Display the user message immediately
     with st.chat_message("user"):
         st.write(user_input)
     
-    # Show spinner while preparing the streaming response
-    with st.spinner("AI Assistant is thinking..."):
-        # Get both the streaming generator and metadata from companion
-        stream_generator, metadata = st.session_state.companion.process_message_stream(user_input)
-    
-    # Create the assistant message container
+    # Create the assistant message container with immediate thinking indicator
     with st.chat_message("assistant"):
+        # Show immediate thinking feedback
+        thinking_placeholder = st.empty()
+        thinking_placeholder.markdown("🧠 *Analyzing your question and preparing response...*")
+        
+        # Show data analysis detection feedback if applicable
+        if st.session_state.companion._should_use_data_analysis(user_input):
+            thinking_placeholder.markdown("🧠 *Analyzing your question...*\n\n📊 *Data analysis detected - querying database...*")
+        
         try:
-            # Use Streamlit's streaming capability
-            streamed_text = st.write_stream(stream_generator)
+            # Show preparation phase
+            with st.spinner("🤖 AI Assistant is preparing your response..."):
+                # Get both the streaming generator and metadata from companion
+                stream_generator, metadata = st.session_state.companion.process_message_stream(user_input)
+            
+            # Clear thinking indicator and start streaming
+            thinking_placeholder.empty()
+            
+            # Add a streaming-specific loading indicator
+            streaming_placeholder = st.empty()
+            streaming_placeholder.markdown("🌊 *Waiting for first response chunk...*")
+            
+            # Use Streamlit's streaming capability with improved handling
+            try:
+                streamed_text = st.write_stream(stream_generator)
+                # Clear the streaming placeholder once content starts appearing
+                streaming_placeholder.empty()
+            except Exception as stream_error:
+                streaming_placeholder.empty()
+                st.error(f"Streaming error: {str(stream_error)}")
+                raise stream_error
             
             # Fix spacing issues in revenue text formatting
             full_response = fix_revenue_text_spacing(streamed_text)
@@ -335,6 +366,7 @@ def process_input_stream(user_input):
             full_response = clean_markdown_formatting(full_response)
             
         except Exception as e:
+            thinking_placeholder.empty()
             st.error(f"Error during streaming: {str(e)}")
             full_response = f"I encountered an error while generating my response: {str(e)}"
             metadata = {"data_analysis": None}
@@ -342,7 +374,7 @@ def process_input_stream(user_input):
         # Display data analysis results immediately if available
         data_analysis = metadata.get("data_analysis")
         if data_analysis:
-            st.subheader("Data Analysis Results")
+            st.subheader("📊 Data Analysis Results")
             
             # Convert list of dictionaries to DataFrame for display
             try:
@@ -393,30 +425,40 @@ def process_input_stream(user_input):
     
     st.session_state.messages.append(assistant_message)
     
-    # Set flag to indicate we need to generate follow-up questions after rendering
+    # Set flag to indicate we need to generate follow-up questions (but don't rerun immediately)
     st.session_state.waiting_for_followup = True
     st.session_state.is_streaming = False
+    st.session_state.loading = False
     
-    # We need to rerun to render the response before generating follow-up questions
+    # Trigger rerun to show follow-up questions
     st.rerun()
 
 # Function to process user input with data analysis if enabled
 def process_input(user_input):
+    """Process user input with progressive UI feedback"""
     # Phase 1: Generate and display the response
-    # Phase 2: Generate follow-up questions
+    # Phase 2: Generate follow-up questions (simplified, no background threading)
     
     # If we're in phase 2 (waiting for follow-up generation after displaying response)
     if st.session_state.waiting_for_followup:
+        # Generate follow-ups directly (no background threading to avoid Streamlit issues)
         with st.spinner("Generating follow-up questions..."):
-            # Get the latest response from the conversation history
-            latest_response = st.session_state.messages[-1]["content"]
-            follow_up_questions = generate_follow_up_questions(latest_response)
-            st.session_state.follow_up_questions = follow_up_questions
-            
-            # Reset the waiting flag and selected follow-up
-            st.session_state.waiting_for_followup = False
-            st.session_state.loading = False
-            st.session_state.selected_follow_up = None
+            try:
+                # Get the latest response from the conversation history
+                latest_response = st.session_state.messages[-1]["content"]
+                follow_up_questions = generate_follow_up_questions(latest_response)
+                st.session_state.follow_up_questions = follow_up_questions
+                
+                # Reset flags
+                st.session_state.waiting_for_followup = False
+                st.session_state.loading = False
+                st.session_state.selected_follow_up = None
+                
+            except Exception as e:
+                print(f"Error generating follow-up questions: {e}")
+                # Still reset flags even if follow-up generation fails
+                st.session_state.waiting_for_followup = False
+                st.session_state.loading = False
         return
         
     # Check if streaming is enabled, if so use streaming process
@@ -426,41 +468,112 @@ def process_input(user_input):
     # Otherwise, we're in phase 1: process the input and generate a response (non-streaming)
     st.session_state.loading = True
     
-    # Process the user input through the enhanced Companion (now includes data analysis)
-    with st.spinner("AI Assistant is thinking..."):
-        # The Companion now handles data analysis automatically
-        result = st.session_state.companion.process_message(user_input)
+    # Add the user message to the conversation history first
+    st.session_state.messages.append({"role": "user", "content": user_input})
+    
+    # Display the user message immediately
+    with st.chat_message("user"):
+        st.write(user_input)
+    
+    # Create the assistant message container with immediate thinking indicator
+    with st.chat_message("assistant"):
+        # Show immediate thinking feedback
+        thinking_placeholder = st.empty()
+        thinking_placeholder.markdown("🧠 *Analyzing your question and preparing response...*")
         
-        # Handle the new response format
-        if isinstance(result, dict) and "response" in result:
-            response = result["response"]
-            data_analysis = result.get("data_analysis")
-        else:
-            # Fallback for simple string response (shouldn't happen with new Companion)
-            response = str(result)
+        # Show data analysis detection feedback if applicable
+        if st.session_state.companion._should_use_data_analysis(user_input):
+            thinking_placeholder.markdown("🧠 *Analyzing your question...*\n\n📊 *Data analysis detected - querying database...*")
+        
+        try:
+            # Process the user input through the enhanced Companion (now includes data analysis)
+            with st.spinner("🤖 AI Assistant is thinking..."):
+                # The Companion now handles data analysis automatically
+                result = st.session_state.companion.process_message(user_input)
+                
+                # Handle the new response format
+                if isinstance(result, dict) and "response" in result:
+                    response = result["response"]
+                    data_analysis = result.get("data_analysis")
+                else:
+                    # Fallback for simple string response (shouldn't happen with new Companion)
+                    response = str(result)
+                    data_analysis = None
+                
+                # Fix spacing issues in revenue text formatting
+                response = fix_revenue_text_spacing(response)
+                
+                # Clean markdown formatting that doesn't render well
+                response = clean_markdown_formatting(response)
+            
+            # Clear thinking indicator and show response
+            thinking_placeholder.empty()
+            st.write(response)
+            
+        except Exception as e:
+            thinking_placeholder.empty()
+            st.error(f"Error during processing: {str(e)}")
+            response = f"I encountered an error while generating my response: {str(e)}"
             data_analysis = None
         
-        # Fix spacing issues in revenue text formatting
-        response = fix_revenue_text_spacing(response)
-        
-        # Clean markdown formatting that doesn't render well
-        response = clean_markdown_formatting(response)
+        # Display data analysis results immediately if available
+        if data_analysis:
+            st.subheader("📊 Data Analysis Results")
+            
+            # Convert list of dictionaries to DataFrame for display
+            try:
+                df = pd.DataFrame(data_analysis.get("results", []))
+                
+                if not df.empty:
+                    # Set row indices to start from 1
+                    df.index = np.arange(1, len(df) + 1)
+                    
+                    # Format and display the data
+                    formatted_df = format_numeric_values(df)
+                    st.dataframe(formatted_df, use_container_width=True)
+                    
+                    # Show query metadata
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Rows Returned", data_analysis.get("row_count", len(df)))
+                    with col2:
+                        st.metric("Execution Time", f"{data_analysis.get('execution_time_ms', 0)}ms")
+                    with col3:
+                        st.metric("Columns", len(df.columns))
+                    
+                    # Show the SQL query used
+                    if data_analysis.get("sql"):
+                        with st.expander("SQL Query"):
+                            st.code(data_analysis.get("sql"), language="sql")
+                    
+                    # Create visualization
+                    create_visualization(df)
+                else:
+                    st.info("Query executed successfully but returned no data.")
+                    
+            except Exception as e:
+                st.error(f"Error displaying data: {e}")
+                # Show raw data as fallback
+                with st.expander("Raw Data"):
+                    st.json(data_analysis.get("results", []))
     
-    # Add the messages to the conversation history
-    st.session_state.messages.append({"role": "user", "content": user_input})
-    st.session_state.messages.append({"role": "assistant", "content": response})
+    # Add the assistant response to the conversation history
+    assistant_message = {"role": "assistant", "content": response}
     
     # If we have data analysis results, store them in the message for display
     if data_analysis:
-        st.session_state.messages[-1]["data"] = data_analysis.get("results", [])
-        st.session_state.messages[-1]["sql"] = data_analysis.get("sql", "")
-        st.session_state.messages[-1]["row_count"] = data_analysis.get("row_count", 0)
-        st.session_state.messages[-1]["execution_time"] = data_analysis.get("execution_time_ms", 0)
+        assistant_message["data"] = data_analysis.get("results", [])
+        assistant_message["sql"] = data_analysis.get("sql", "")
+        assistant_message["row_count"] = data_analysis.get("row_count", 0)
+        assistant_message["execution_time"] = data_analysis.get("execution_time_ms", 0)
     
-    # Set flag to indicate we need to generate follow-up questions after rendering
+    st.session_state.messages.append(assistant_message)
+    
+    # Set flag to indicate we need to generate follow-up questions (but don't rerun immediately)
     st.session_state.waiting_for_followup = True
+    st.session_state.loading = False
     
-    # We need to rerun to render the response before generating follow-up questions
+    # Trigger rerun to show follow-up questions
     st.rerun()
 
 # Sidebar for user identification and settings
@@ -504,11 +617,18 @@ with st.sidebar:
         
         # Update analyst if changed (this will require reinitializing the companion)
         if selected_analyst != st.session_state.selected_analyst:
+            # Close the existing companion properly
+            if st.session_state.companion:
+                try:
+                    st.session_state.companion.close()
+                    print(f"✅ UI: Closed {st.session_state.selected_analyst} session")
+                except Exception as e:
+                    print(f"⚠️ UI: Error closing companion during analyst switch: {e}")
+            
             st.session_state.selected_analyst = selected_analyst
             # Reinitialize companion with new analyst
-            if st.session_state.companion:
-                st.session_state.companion = Companion(st.session_state.user_id, analyst_type=selected_analyst)
-                st.success(f"Switched to {selected_analyst}")
+            st.session_state.companion = Companion(st.session_state.user_id, analyst_type=selected_analyst)
+            st.success(f"🔄 Switched to {selected_analyst} (previous session closed)")
         
         # Model selector
         st.subheader("Model Settings")
@@ -703,9 +823,18 @@ with st.sidebar:
         
         # Clear cache button
         if st.button("Clear Cache"):
+            # Properly close companion session before clearing
+            if st.session_state.companion:
+                try:
+                    st.session_state.companion.close()
+                    print("✅ UI: Companion session closed properly")
+                except Exception as e:
+                    print(f"⚠️ UI: Error closing companion: {e}")
+            
             # Reset all session state
             for key in list(st.session_state.keys()):
                 del st.session_state[key]
+            st.success("🔄 Cache cleared and session closed!")
             st.rerun()
 
 # Main content area - only show if user is identified
@@ -804,12 +933,23 @@ if st.session_state.user_id:
         process_input(user_input)
         st.rerun()
     
-    # Loading indicator with streaming awareness
+    # Loading indicator with streaming awareness and optimization status
     if st.session_state.loading or st.session_state.is_streaming:
         if st.session_state.is_streaming:
             st.markdown("🌊 **Streaming response in real-time...**")
         else:
-            st.markdown("![Loading](https://i.gifer.com/ZKZx.gif)")
+            st.markdown("🧠 **AI Assistant is thinking...**")
+        
+        # Show optimization status
+        if st.session_state.companion:
+            try:
+                # Show batch write status if available
+                if hasattr(st.session_state.companion.memory_manager.short_term, 'write_buffer'):
+                    buffer_size = len(st.session_state.companion.memory_manager.short_term.write_buffer)
+                    if buffer_size > 0:
+                        st.caption(f"📝 Memory optimization: {buffer_size} messages buffered for batch write")
+            except:
+                pass  # Silently handle any errors in status display
 else:
     # Welcome message when no user is identified
     st.title("Welcome to Elevate AI Companion")

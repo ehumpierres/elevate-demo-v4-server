@@ -1,10 +1,13 @@
 """
-Main companion application that coordinates all components.
+Main companion application that coordinates all components with optimized performance.
 """
 import os
 import sys
 import threading
 import json
+import re
+import time
+from functools import lru_cache
 
 # Add the parent directory to the Python path when running directly
 if __name__ == "__main__":
@@ -17,6 +20,60 @@ from config.config import (
     COMPANION_MAX_COMPLETION_TOKENS,
     API_CONVERSATION_HISTORY_LIMIT
 )
+
+class DataAnalysisDetector:
+    """Fast cached data analysis detection with optimized patterns."""
+    
+    def __init__(self):
+        self.cache = {}
+        self.cache_max_size = 1000
+        self.common_patterns = self._compile_patterns()
+    
+    def _compile_patterns(self):
+        """Compile regex patterns for faster matching."""
+        data_keywords = [
+            r'\bshow\s+me\b', r'\bhow\s+many\b', r'\bwhat\s+is\s+the\b', 
+            r'\btotal\b', r'\bcount\b', r'\bsum\b', r'\baverage\b', r'\bmean\b',
+            r'\brevenue\b', r'\bsales\b', r'\bcustomers?\b', r'\bproducts?\b', 
+            r'\borders?\b', r'\bdata\b', r'\breports?\b', r'\banalysis\b', 
+            r'\btrends?\b', r'\bperformance\b', r'\bmetrics?\b', r'\bkpis?\b', 
+            r'\bdashboard\b', r'\bquery\b', r'\btables?\b', r'\bdatabase\b',
+            r'\blast\s+quarter\b', r'\bthis\s+month\b', r'\byears?\b',
+            r'\btop\s+\d+\b', r'\bbottom\s+\d+\b', r'\bcompare\b', r'\bfilter\b'
+        ]
+        
+        return [re.compile(pattern, re.IGNORECASE) for pattern in data_keywords]
+    
+    def should_analyze(self, message):
+        """
+        Fast detection with caching for data analysis needs.
+        
+        Args:
+            message: The user's message
+            
+        Returns:
+            Boolean indicating if data analysis should be used
+        """
+        # Create cache key
+        msg_normalized = message.lower().strip()
+        msg_hash = hash(msg_normalized)
+        
+        # Check cache first
+        if msg_hash in self.cache:
+            return self.cache[msg_hash]
+        
+        # Fast regex pattern matching
+        result = any(pattern.search(msg_normalized) for pattern in self.common_patterns)
+        
+        # Cache the result (with LRU-style cleanup)
+        if len(self.cache) >= self.cache_max_size:
+            # Remove oldest 20% of cache entries
+            old_keys = list(self.cache.keys())[:len(self.cache) // 5]
+            for key in old_keys:
+                del self.cache[key]
+        
+        self.cache[msg_hash] = result
+        return result
 
 class Companion:
     """
@@ -40,6 +97,10 @@ class Companion:
         self.llm_api = LlmApi(analyst_type=analyst_type)
         self.vanna_wrapper = None  # Initialize lazily when needed
         self.data_analysis_enabled = True  # Enable data analysis by default
+        
+        # Performance optimizations
+        self.data_detector = DataAnalysisDetector()
+        self._session_active = True
     
     def _get_vanna_wrapper(self):
         """Get or create VannaToolWrapper instance (lazy initialization)."""
@@ -81,7 +142,7 @@ class Companion:
     
     def _should_use_data_analysis(self, user_message):
         """
-        Determine if the user message requires data analysis.
+        Determine if the user message requires data analysis (optimized with caching).
         
         Args:
             user_message: The user's message
@@ -92,16 +153,12 @@ class Companion:
         if not self.data_analysis_enabled:
             return False
         
-        # Keywords that suggest data analysis is needed
-        data_keywords = [
-            'show me', 'how many', 'what is the', 'total', 'count', 'sum', 'average',
-            'revenue', 'sales', 'customers', 'products', 'orders', 'data', 'report',
-            'analysis', 'trend', 'performance', 'metrics', 'kpi', 'dashboard',
-            'query', 'table', 'database', 'last quarter', 'this month', 'year'
-        ]
+        start_time = time.time()
+        result = self.data_detector.should_analyze(user_message)
+        detection_time = (time.time() - start_time) * 1000
         
-        message_lower = user_message.lower()
-        return any(keyword in message_lower for keyword in data_keywords)
+        print(f"🚀 Data analysis detection: {result} (took {detection_time:.1f}ms)")
+        return result
     
     def _analyze_data(self, user_message):
         """
@@ -363,13 +420,30 @@ Please analyze these results and provide insights in your response. Reference th
             return {"success": False, "error": str(e)}
     
     def close(self):
-        """Close all connections."""
+        """Close all connections and flush pending operations."""
+        print(f"🔄 Companion: Closing session for user {self.user_id}")
+        
+        self._session_active = False
+        
+        # Force write any pending memory operations
+        try:
+            if hasattr(self.memory_manager.short_term, 'force_write'):
+                self.memory_manager.short_term.force_write()
+            if hasattr(self.memory_manager.short_term, 'close'):
+                self.memory_manager.short_term.close()
+            print("✅ Companion: Memory writes flushed")
+        except Exception as e:
+            print(f"⚠️ Companion: Error flushing memory: {e}")
+        
+        # Close VannaToolWrapper connections
         if self.vanna_wrapper:
             try:
                 self.vanna_wrapper.close()
-                print("🔗 VannaToolWrapper connections closed")
+                print("✅ Companion: VannaToolWrapper connections closed")
             except Exception as e:
-                print(f"⚠️ Error closing VannaToolWrapper: {e}")
+                print(f"⚠️ Companion: Error closing VannaToolWrapper: {e}")
+        
+        print("🔚 Companion: Session closed successfully")
 
 def main():
     """

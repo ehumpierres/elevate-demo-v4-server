@@ -169,7 +169,13 @@ class LlmApi:
                                     yield content
                                     
                         except json.JSONDecodeError as e:
-                            print(f"⚠️ Warning: Failed to parse JSON chunk: {data[:100]}... Error: {e}")
+                            # Check if this is an expected OpenRouter status message
+                            if any(status in data.upper() for status in ["OPENROUTER PROCESSING", "PROCESSING", "CONNECTING", "INITIALIZING"]):
+                                # These are expected status messages, log at debug level only
+                                print(f"🔄 OpenRouter status: {data.strip()}")
+                            else:
+                                # Unexpected JSON parsing error, log as warning
+                                print(f"⚠️ Warning: Failed to parse JSON chunk: {data[:100]}... Error: {e}")
                             continue
                         except Exception as e:
                             print(f"⚠️ Warning: Error processing chunk: {e}")
