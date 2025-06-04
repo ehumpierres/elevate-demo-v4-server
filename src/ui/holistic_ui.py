@@ -71,7 +71,7 @@ if "selected_follow_up" not in st.session_state:
 
 # Add session state for analyst selection
 if "selected_analyst" not in st.session_state:
-    st.session_state.selected_analyst = "Arabella (Business Architect)"
+    st.session_state.selected_analyst = "Sales Motion Strategy Agent"
 
 # Add session state for streaming support
 if "streaming_enabled" not in st.session_state:
