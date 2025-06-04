@@ -47,27 +47,27 @@ if "loading" not in st.session_state:
 if "current_model" not in st.session_state:
     st.session_state.current_model = OPENROUTER_MODEL
 
-if "follow_up_questions" not in st.session_state:
-    st.session_state.follow_up_questions = []
+# if "follow_up_questions" not in st.session_state:
+#     st.session_state.follow_up_questions = []
 
-if "llm_api" not in st.session_state:
-    st.session_state.llm_api = None
+# if "llm_api" not in st.session_state:
+#     st.session_state.llm_api = None
 
 # Add a new state variable for the warm start trigger
 if "trigger_warm_start" not in st.session_state:
     st.session_state.trigger_warm_start = False
 
 # Add a new state variable for tracking the two-phase process
-if "waiting_for_followup" not in st.session_state:
-    st.session_state.waiting_for_followup = False
+# if "waiting_for_followup" not in st.session_state:
+#     st.session_state.waiting_for_followup = False
 
 # Add a state variable to store the last user input for processing follow-ups
 if "last_user_input" not in st.session_state:
     st.session_state.last_user_input = None
 
 # Add a new state variable for selected follow-up question
-if "selected_follow_up" not in st.session_state:
-    st.session_state.selected_follow_up = None
+# if "selected_follow_up" not in st.session_state:
+#     st.session_state.selected_follow_up = None
 
 # Add session state for analyst selection
 if "selected_analyst" not in st.session_state:
@@ -192,98 +192,98 @@ def create_visualization(df):
     st.bar_chart(df, x=x_col, y=y_col)
 
 # Function to generate follow-up questions based on the latest response
-def generate_follow_up_questions(response):
-    """Generate follow-up questions using the LLM API"""
-    try:
-        if st.session_state.llm_api is None:
-            st.session_state.llm_api = LlmApi()
-        
-        # Create a simple prompt for getting follow-up questions
-        prompt = f"Based on this latest response, show me 4 good questions I should be asking next. Format as a numbered list with just the questions:\n\nLatest response: {response}"
-        
-        # Use the detailed persona as the system prompt to get more relevant business questions
-        system_prompt = """You quantify the costs of misalignment between sales, marketing, and customer success teams, including NRR erosion, CAC inflation, cross-sell shortfalls, sales cycle lengthening, and pipeline leakage. You see the danger of operating in functional silos rather than sharing GTM system KPIs & strategies to ensure that the company as a whole is progressing in a healthy manner. 
-You avoid linear thinking in understanding problems and finding solutions. You know that a company is a complex ecosystem, and that any decision has second and third order impacts. You can help companies see when linear thinking is causing them to miss something or pursue less effective solutions. You also work to help companies proactively avoid missteps rather than falling into the trap of reacting to fires by constantly masking symptoms rather than finding and fixing root causes at the system level. You help leaders calculate the impact of various decisions on things like efficiency factors, revenue leakage, missing feedback loops, and customer impact decay.
-You provide observations on patterns and trends when you see companies heading for common missteps, and you find opportunities to help companies to shift thinking, create stronger GTM leadership alignment, or make different operational decisions that will help them successfully grow. You recognize the importance of communication and alignment across the GTM org, and lean into the importance of not making assumptions, educating teams on the "why" behind decisions, and the value in taking time to do things right to prevent future issues. You also help navigate and address organizational resistance through executive sponsorship, incremental rollouts, and certification programs.
-You recommend technology enablement strategies, including CRM customization and predictive analytics tools alignment. You are able to convey the importance of data hygiene, and how companies with accurate data inputs can leverage them to make smarter decisions. 
-You establish appropriate KPIs based on company stage, preventing the 19-37% enterprise value erosion that occurs with KPI-maturity misalignment.
-You can translate abstract Revenue Architecture concepts into concrete action plans, drawing from case studies like Channable's 22% increase in deal size through outcome-based selling.
-When analyzing problems, you apply mathematical rigor, calculating metrics like GTM Efficiency Factor, CAC payback periods, and CLTV:CAC ratios.
+# def generate_follow_up_questions(response):
+#     """Generate follow-up questions using the LLM API"""
+#     try:
+#         if st.session_state.llm_api is None:
+#             st.session_state.llm_api = LlmApi()
+#         
+#         # Create a simple prompt for getting follow-up questions
+#         prompt = f"Based on this latest response, show me 4 good questions I should be asking next. Format as a numbered list with just the questions:\n\nLatest response: {response}"
+#         
+#         # Use the detailed persona as the system prompt to get more relevant business questions
+#         system_prompt = """You quantify the costs of misalignment between sales, marketing, and customer success teams, including NRR erosion, CAC inflation, cross-sell shortfalls, sales cycle lengthening, and pipeline leakage. You see the danger of operating in functional silos rather than sharing GTM system KPIs & strategies to ensure that the company as a whole is progressing in a healthy manner. 
+# You avoid linear thinking in understanding problems and finding solutions. You know that a company is a complex ecosystem, and that any decision has second and third order impacts. You can help companies see when linear thinking is causing them to miss something or pursue less effective solutions. You also work to help companies proactively avoid missteps rather than falling into the trap of reacting to fires by constantly masking symptoms rather than finding and fixing root causes at the system level. You help leaders calculate the impact of various decisions on things like efficiency factors, revenue leakage, missing feedback loops, and customer impact decay.
+# You provide observations on patterns and trends when you see companies heading for common missteps, and you find opportunities to help companies to shift thinking, create stronger GTM leadership alignment, or make different operational decisions that will help them successfully grow. You recognize the importance of communication and alignment across the GTM org, and lean into the importance of not making assumptions, educating teams on the "why" behind decisions, and the value in taking time to do things right to prevent future issues. You also help navigate and address organizational resistance through executive sponsorship, incremental rollouts, and certification programs.
+# You recommend technology enablement strategies, including CRM customization and predictive analytics tools alignment. You are able to convey the importance of data hygiene, and how companies with accurate data inputs can leverage them to make smarter decisions. 
+# You establish appropriate KPIs based on company stage, preventing the 19-37% enterprise value erosion that occurs with KPI-maturity misalignment.
+# You can translate abstract Revenue Architecture concepts into concrete action plans, drawing from case studies like Channable's 22% increase in deal size through outcome-based selling.
+# When analyzing problems, you apply mathematical rigor, calculating metrics like GTM Efficiency Factor, CAC payback periods, and CLTV:CAC ratios.
 
-You have deep expertise in key metrics that matter at the "Growth" Stage for companies between $5M and $20M ARR and can provide specific benchmarks for SaaS companies:
-- Customer Retention Rate: You know that median SaaS companies achieve 80-85% retention, while top quartile companies exceed 90%. This metric reveals product value and customer satisfaction.
-- Gross Revenue Retention: You advise that healthy SaaS companies maintain 85-90% (median) to 95%+ (top quartile) GRR, indicating product/service stickiness.
-- Net Revenue Retention: You emphasize that successful companies achieve 100-110% (median) to 120%+ (top quartile) NRR, demonstrating customer success effectiveness.
-- Customer Acquisition Cost by GTM Channel: You help companies optimize their channel mix, targeting a minimum 1:3 CAC:LTV ratio, with top performers achieving 1:5+.
-- Win Rate: You benchmark sales effectiveness at 20-30% (median) to 40%+ (top quartile) win rates, reflecting competitive positioning.
-- Expansion Revenue %: You guide companies to target 20-30% of new ARR from existing customers (median), with top performers exceeding 40%.
-- LTV:CAC ratio: You emphasize that sustainable business models maintain a company ratio greater than 3:1.
-- Sales Velocity: You help companies measure and improve their revenue generation capacity through the formula: Opportunities × win rate × deal size ÷ sales cycle, targeting month-over-month increases.
+# You have deep expertise in key metrics that matter at the "Growth" Stage for companies between $5M and $20M ARR and can provide specific benchmarks for SaaS companies:
+# - Customer Retention Rate: You know that median SaaS companies achieve 80-85% retention, while top quartile companies exceed 90%. This metric reveals product value and customer satisfaction.
+# - Gross Revenue Retention: You advise that healthy SaaS companies maintain 85-90% (median) to 95%+ (top quartile) GRR, indicating product/service stickiness.
+# - Net Revenue Retention: You emphasize that successful companies achieve 100-110% (median) to 120%+ (top quartile) NRR, demonstrating customer success effectiveness.
+# - Customer Acquisition Cost by GTM Channel: You help companies optimize their channel mix, targeting a minimum 1:3 CAC:LTV ratio, with top performers achieving 1:5+.
+# - Win Rate: You benchmark sales effectiveness at 20-30% (median) to 40%+ (top quartile) win rates, reflecting competitive positioning.
+# - Expansion Revenue %: You guide companies to target 20-30% of new ARR from existing customers (median), with top performers exceeding 40%.
+# - LTV:CAC ratio: You emphasize that sustainable business models maintain a company ratio greater than 3:1.
+# - Sales Velocity: You help companies measure and improve their revenue generation capacity through the formula: Opportunities × win rate × deal size ÷ sales cycle, targeting month-over-month increases.
 
-You understand that shifting from 'grow at all costs' to engineered growth is crucial in the post-2022 economic landscape where investors demand profitability alongside expansion. And you know that many of today's executives built successful careers on the growth at all costs model, and/or by using outdated methodologies & frameworks, so it's important to use data and hard facts to show why a new approach is needed to create viable, healthy companies.
+# You understand that shifting from 'grow at all costs' to engineered growth is crucial in the post-2022 economic landscape where investors demand profitability alongside expansion. And you know that many of today's executives built successful careers on the growth at all costs model, and/or by using outdated methodologies & frameworks, so it's important to use data and hard facts to show why a new approach is needed to create viable, healthy companies.
 
-Based on the above expertise, suggest follow-up questions that dive deeper into revenue architecture, metrics alignment, and GTM optimization."""
-        
-        # Call the API directly with the detailed system prompt
-        payload = {
-            "model": st.session_state.current_model,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt}
-            ],
-            "max_tokens": 300
-        }
-        
-        # Add streaming support if enabled (though for follow-up questions we'll keep it simple)
-        if st.session_state.streaming_enabled:
-            payload["stream"] = False  # Keep follow-up generation non-streaming for simplicity
-        
-        # Use the existing headers from the LlmApi class
-        response = httpx.post(
-            OPENROUTER_API_URL,
-            headers=st.session_state.llm_api.headers,
-            json=payload,
-            timeout=API_TIMEOUT
-        )
-        
-        response.raise_for_status()
-        result = response.json()
-        
-        if "choices" in result and len(result["choices"]) > 0:
-            suggestions_text = result["choices"][0]["message"]["content"]
-            
-            # Extract questions from the numbered list
-            questions = []
-            for line in suggestions_text.split('\n'):
-                # Look for numbered lines (1. Question) or bulleted lines (• Question)
-                match = re.search(r'(?:\d+\.|\*|\•)\s*(.*?)(?:\?|$)', line)
-                if match:
-                    question = match.group(1).strip()
-                    if not question.endswith('?'):
-                        question += '?'
-                    questions.append(question)
-            
-            # Ensure we have exactly 4 questions
-            return questions[:4] if len(questions) >= 4 else questions
-        else:
-            print("WARNING: Unexpected response structure for follow-up questions")
-            return []
-    except Exception as e:
-        print(f"Error generating follow-up questions: {str(e)}")
-        traceback.print_exc()
-        return []
+# Based on the above expertise, suggest follow-up questions that dive deeper into revenue architecture, metrics alignment, and GTM optimization."""
+#         
+#         # Call the API directly with the detailed system prompt
+#         payload = {
+#             "model": st.session_state.current_model,
+#             "messages": [
+#                 {"role": "system", "content": system_prompt},
+#                 {"role": "user", "content": prompt}
+#             ],
+#             "max_tokens": 300
+#         }
+#         
+#         # Add streaming support if enabled (though for follow-up questions we'll keep it simple)
+#         if st.session_state.streaming_enabled:
+#             payload["stream"] = False  # Keep follow-up generation non-streaming for simplicity
+#         
+#         # Use the existing headers from the LlmApi class
+#         response = httpx.post(
+#             OPENROUTER_API_URL,
+#             headers=st.session_state.llm_api.headers,
+#             json=payload,
+#             timeout=API_TIMEOUT
+#         )
+#         
+#         response.raise_for_status()
+#         result = response.json()
+#         
+#         if "choices" in result and len(result["choices"]) > 0:
+#             suggestions_text = result["choices"][0]["message"]["content"]
+#             
+#             # Extract questions from the numbered list
+#             questions = []
+#             for line in suggestions_text.split('\n'):
+#                 # Look for numbered lines (1. Question) or bulleted lines (• Question)
+#                 match = re.search(r'(?:\d+\.|\*|\•)\s*(.*?)(?:\?|$)', line)
+#                 if match:
+#                     question = match.group(1).strip()
+#                     if not question.endswith('?'):
+#                         question += '?'
+#                     questions.append(question)
+#             
+#             # Ensure we have exactly 4 questions
+#             return questions[:4] if len(questions) >= 4 else questions
+#         else:
+#             print("WARNING: Unexpected response structure for follow-up questions")
+#             return []
+#     except Exception as e:
+#         print(f"Error generating follow-up questions: {str(e)}")
+#         traceback.print_exc()
+#         return []
 
 # Function to handle clicking a follow-up question
-def handle_follow_up_click(question):
-    """Process the selected follow-up question"""
-    # Save the selected question for display
-    st.session_state.selected_follow_up = question
-    # Clear the follow-up questions list
-    st.session_state.follow_up_questions = []
-    # Process the question
-    process_input(question)
-    # Force a rerun to update the UI
-    st.rerun()
+# def handle_follow_up_click(question):
+#     """Process the selected follow-up question"""
+#     # Save the selected question for display
+#     st.session_state.selected_follow_up = question
+#     # Clear the follow-up questions list
+#     st.session_state.follow_up_questions = []
+#     # Process the question
+#     process_input(question)
+#     # Force a rerun to update the UI
+#     st.rerun()
 
 # Function to process user input with streaming support
 def process_input_stream(user_input):
@@ -292,28 +292,28 @@ def process_input_stream(user_input):
     # Phase 2: Generate follow-up questions (simplified, no background threading)
     
     # If we're in phase 2 (waiting for follow-up generation after displaying response)
-    if st.session_state.waiting_for_followup:
-        # Generate follow-ups directly (no background threading to avoid Streamlit issues)
-        with st.spinner("Generating follow-up questions..."):
-            try:
-                # Get the latest response from the conversation history
-                latest_response = st.session_state.messages[-1]["content"]
-                follow_up_questions = generate_follow_up_questions(latest_response)
-                st.session_state.follow_up_questions = follow_up_questions
-                
-                # Reset flags
-                st.session_state.waiting_for_followup = False
-                st.session_state.loading = False
-                st.session_state.selected_follow_up = None
-                st.session_state.is_streaming = False
-                
-            except Exception as e:
-                print(f"Error generating follow-up questions: {e}")
-                # Still reset flags even if follow-up generation fails
-                st.session_state.waiting_for_followup = False
-                st.session_state.loading = False
-                st.session_state.is_streaming = False
-        return
+    # if st.session_state.waiting_for_followup:
+    #     # Generate follow-ups directly (no background threading to avoid Streamlit issues)
+    #     with st.spinner("Generating follow-up questions..."):
+    #         try:
+    #             # Get the latest response from the conversation history
+    #             latest_response = st.session_state.messages[-1]["content"]
+    #             follow_up_questions = generate_follow_up_questions(latest_response)
+    #             st.session_state.follow_up_questions = follow_up_questions
+    #             
+    #             # Reset flags
+    #             st.session_state.waiting_for_followup = False
+    #             st.session_state.loading = False
+    #             st.session_state.selected_follow_up = None
+    #             st.session_state.is_streaming = False
+    #             
+    #         except Exception as e:
+    #             print(f"Error generating follow-up questions: {e}")
+    #             # Still reset flags even if follow-up generation fails
+    #             st.session_state.waiting_for_followup = False
+    #             st.session_state.loading = False
+    #             st.session_state.is_streaming = False
+    #     return
         
     # Otherwise, we're in phase 1: process the input and generate a streaming response
     st.session_state.loading = True
@@ -338,7 +338,7 @@ def process_input_stream(user_input):
         
         try:
             # Show preparation phase
-            with st.spinner("🤖 AI Assistant is preparing your response..."):
+            with st.spinner("AI Assistant is preparing your response..."):
                 # Get both the streaming generator and metadata from companion
                 stream_generator, metadata = st.session_state.companion.process_message_stream(user_input)
             
@@ -426,12 +426,12 @@ def process_input_stream(user_input):
     st.session_state.messages.append(assistant_message)
     
     # Set flag to indicate we need to generate follow-up questions (but don't rerun immediately)
-    st.session_state.waiting_for_followup = True
+    # st.session_state.waiting_for_followup = True
     st.session_state.is_streaming = False
     st.session_state.loading = False
     
     # Trigger rerun to show follow-up questions
-    st.rerun()
+    # st.rerun()
 
 # Function to process user input with data analysis if enabled
 def process_input(user_input):
@@ -440,26 +440,21 @@ def process_input(user_input):
     # Phase 2: Generate follow-up questions (simplified, no background threading)
     
     # If we're in phase 2 (waiting for follow-up generation after displaying response)
-    if st.session_state.waiting_for_followup:
-        # Generate follow-ups directly (no background threading to avoid Streamlit issues)
-        with st.spinner("Generating follow-up questions..."):
-            try:
-                # Get the latest response from the conversation history
-                latest_response = st.session_state.messages[-1]["content"]
-                follow_up_questions = generate_follow_up_questions(latest_response)
-                st.session_state.follow_up_questions = follow_up_questions
-                
-                # Reset flags
-                st.session_state.waiting_for_followup = False
-                st.session_state.loading = False
-                st.session_state.selected_follow_up = None
-                
-            except Exception as e:
-                print(f"Error generating follow-up questions: {e}")
-                # Still reset flags even if follow-up generation fails
-                st.session_state.waiting_for_followup = False
-                st.session_state.loading = False
-        return
+    # if st.session_state.waiting_for_followup:
+    #     # Generate follow-ups directly (no background threading to avoid Streamlit issues)
+    #     with st.spinner("Generating follow-up questions..."):
+    #         try:
+    #             # Get the latest response from the conversation history
+    #             latest_response = st.session_state.messages[-1]["content"]
+    #             follow_up_questions = generate_follow_up_questions(latest_response)
+    #             st.session_state.follow_up_questions = follow_up_questions
+    #             
+    #         except Exception as e:
+    #             print(f"Error generating follow-up questions: {e}")
+    #             # Still reset flags even if follow-up generation fails
+    #             st.session_state.waiting_for_followup = False
+    #             st.session_state.loading = False
+    #     return
         
     # Check if streaming is enabled, if so use streaming process
     if st.session_state.streaming_enabled:
@@ -570,11 +565,11 @@ def process_input(user_input):
     st.session_state.messages.append(assistant_message)
     
     # Set flag to indicate we need to generate follow-up questions (but don't rerun immediately)
-    st.session_state.waiting_for_followup = True
+    # st.session_state.waiting_for_followup = True
     st.session_state.loading = False
     
     # Trigger rerun to show follow-up questions
-    st.rerun()
+    # st.rerun()
 
 # Sidebar for user identification and settings
 with st.sidebar:
@@ -591,14 +586,14 @@ with st.sidebar:
         if col1.button("Start Session") and user_id:
             st.session_state.user_id = user_id
             st.session_state.companion = Companion(user_id, analyst_type=st.session_state.selected_analyst)
-            st.session_state.llm_api = LlmApi()  # Initialize LLM API for follow-up questions
+            # st.session_state.llm_api = LlmApi()  # Initialize LLM API for follow-up questions
             st.rerun()
         
         # Warm start button
         if col2.button("Warm Start") and user_id:
             st.session_state.user_id = user_id
             st.session_state.companion = Companion(user_id, analyst_type=st.session_state.selected_analyst)
-            st.session_state.llm_api = LlmApi()  # Initialize LLM API for follow-up questions
+            # st.session_state.llm_api = LlmApi()  # Initialize LLM API for follow-up questions
             # Set a flag to trigger the warm start prompt after rerun
             st.session_state.trigger_warm_start = True
             st.rerun()
@@ -901,21 +896,21 @@ if st.session_state.user_id:
                             st.json(message["data"])
     
     # Check if we need to process follow-up questions after displaying the response
-    if st.session_state.waiting_for_followup:
-        process_input(None)  # Call process_input again with None to generate follow-up questions
+    # if st.session_state.waiting_for_followup:
+    #     process_input(None)  # Call process_input again with None to generate follow-up questions
     
     # Display follow-up question bubbles if available
-    if st.session_state.follow_up_questions:
-        st.write("**Suggested Follow-up Questions:**")
-        cols = st.columns(len(st.session_state.follow_up_questions))
-        for i, question in enumerate(st.session_state.follow_up_questions):
-            # Create a clickable button for each question
-            if cols[i].button(question, key=f"follow_up_{i}", use_container_width=True):
-                handle_follow_up_click(question)
-    elif st.session_state.selected_follow_up and st.session_state.loading:
-        # Show only the selected question when it's being processed
-        st.write("**Processing Question:**")
-        st.info(st.session_state.selected_follow_up)
+    # if st.session_state.follow_up_questions:
+    #     st.write("**Suggested Follow-up Questions:**")
+    #     cols = st.columns(len(st.session_state.follow_up_questions))
+    #     for i, question in enumerate(st.session_state.follow_up_questions):
+    #         # Create a clickable button for each question
+    #         if cols[i].button(question, key=f"follow_up_{i}", use_container_width=True):
+    #             handle_follow_up_click(question)
+    # elif st.session_state.selected_follow_up and st.session_state.loading:
+    #     # Show only the selected question when it's being processed
+    #     st.write("**Processing Question:**")
+    #     st.info(st.session_state.selected_follow_up)
     
     # Chat input area
     # Chat input
@@ -925,7 +920,7 @@ if st.session_state.user_id:
     
     user_input = st.chat_input(
         input_placeholder,
-        disabled=st.session_state.loading or not st.session_state.user_id or st.session_state.waiting_for_followup or st.session_state.is_streaming
+        disabled=st.session_state.loading or not st.session_state.user_id or st.session_state.is_streaming  # removed st.session_state.waiting_for_followup
     )
     
     # Process input when submitted
