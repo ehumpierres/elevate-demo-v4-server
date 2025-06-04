@@ -241,6 +241,111 @@ Please analyze these results and provide insights in your response. Reference th
         
         return response_data
     
+    def process_message_stream(self, user_message):
+        """
+        Process a user message and generate a streaming response.
+        
+        Args:
+            user_message: The message from the user
+            
+        Returns:
+            A tuple containing:
+            - Generator that yields chunks of the response
+            - Dictionary with metadata (data_analysis, etc.)
+        """
+        # Add the user message to short-term memory
+        self.memory_manager.add_user_message(user_message)
+        
+        # Check if this message requires data analysis
+        data_result = None
+        if self._should_use_data_analysis(user_message):
+            print("🤖 Data analysis detected - querying database...")
+            data_result = self._analyze_data(user_message)
+        
+        # Get relevant memories and conversation context
+        memories = self.memory_manager.get_relevant_memories(user_message)
+        
+        # Use the limited API conversation history
+        api_history = self.memory_manager.get_api_conversation_history(API_CONVERSATION_HISTORY_LIMIT)
+        conversation_context = "\n".join([f"{msg['role']}: {msg['content']}" for msg in api_history])
+        
+        # Debug print statements
+        print("\n=== Streaming Conversation Context Debug Info ===")
+        print(f"API conversation history limit: {API_CONVERSATION_HISTORY_LIMIT} messages")
+        print(f"API conversation history actual length: {len(api_history)} messages")
+        print(f"API conversation context tokens (estimated): {len(conversation_context) // 4} tokens")
+        print(f"Full memory history length: {len(self.memory_manager.get_full_conversation_history())} messages")
+        if data_result:
+            print(f"Data analysis results: {data_result.get('row_count', 0)} rows")
+        print("===============================================\n")
+        
+        # Print long-term memories for debugging
+        print("\n=== Retrieved Long-term Memories ===")
+        print("User memories:", memories["user_memories"] if memories["user_memories"] else "None")
+        print("Companion memories:", memories["companion_memories"] if memories["companion_memories"] else "None")
+        print("===================================\n")
+        
+        # Prepare the message for the LLM
+        enhanced_message = user_message
+        
+        # If we have data results, include them in the context
+        if data_result and data_result.get("success"):
+            data_context = f"""
+
+DATA ANALYSIS RESULTS:
+Question: {data_result.get('question', '')}
+SQL Query: {data_result.get('sql', '')}
+Results: {json.dumps(data_result.get('results', []), indent=2)}
+Row Count: {data_result.get('row_count', 0)}
+Execution Time: {data_result.get('execution_time_ms', 0)}ms
+
+Please analyze these results and provide insights in your response. Reference the specific data points and explain what they mean for the business."""
+            
+            enhanced_message = user_message + data_context
+        
+        # Create the metadata dict
+        metadata = {
+            "data_analysis": data_result if data_result and data_result.get("success") else None
+        }
+        
+        # Create the streaming generator
+        def stream_generator():
+            full_response = ""
+            try:
+                for chunk in self.llm_api.generate_response_stream(
+                    enhanced_message, 
+                    memories["user_memories"], 
+                    memories["companion_memories"], 
+                    conversation_context,
+                    max_tokens=COMPANION_MAX_COMPLETION_TOKENS
+                ):
+                    full_response += chunk
+                    yield chunk
+                    
+            except Exception as e:
+                print(f"❌ Error during streaming: {e}")
+                error_message = f"I encountered an error while generating my response: {str(e)}"
+                full_response = error_message
+                yield error_message
+            
+            # Store the complete response for memory after streaming
+            metadata["full_response"] = full_response
+            
+            # Add the complete assistant response to short-term memory
+            self.memory_manager.add_assistant_message(full_response)
+            
+            # Store the conversation in long-term memory asynchronously
+            print(f"\n[DEBUG] Companion: Initiating async memory storage thread...")
+            memory_thread = threading.Thread(
+                target=self._store_conversation_async,
+                args=(user_message, full_response)
+            )
+            memory_thread.daemon = True
+            memory_thread.start()
+            print(f"[DEBUG] Companion: Memory storage thread started")
+        
+        return stream_generator(), metadata
+    
     def set_data_analysis_enabled(self, enabled):
         """Enable or disable data analysis capabilities."""
         self.data_analysis_enabled = enabled

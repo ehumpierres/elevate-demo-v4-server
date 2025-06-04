@@ -73,6 +73,14 @@ if "selected_follow_up" not in st.session_state:
 if "selected_analyst" not in st.session_state:
     st.session_state.selected_analyst = "Arabella (Business Architect)"
 
+# Add session state for streaming support
+if "streaming_enabled" not in st.session_state:
+    st.session_state.streaming_enabled = True
+
+# Add a new state variable for tracking streaming status
+if "is_streaming" not in st.session_state:
+    st.session_state.is_streaming = False
+
 # Page configuration
 st.set_page_config(
     page_title="Elevate AI Companion",
@@ -226,6 +234,10 @@ Based on the above expertise, suggest follow-up questions that dive deeper into 
             "max_tokens": 300
         }
         
+        # Add streaming support if enabled (though for follow-up questions we'll keep it simple)
+        if st.session_state.streaming_enabled:
+            payload["stream"] = False  # Keep follow-up generation non-streaming for simplicity
+        
         # Use the existing headers from the LlmApi class
         response = httpx.post(
             OPENROUTER_API_URL,
@@ -273,6 +285,121 @@ def handle_follow_up_click(question):
     # Force a rerun to update the UI
     st.rerun()
 
+# Function to process user input with streaming support
+def process_input_stream(user_input):
+    """Process user input with streaming response support"""
+    # Phase 1: Generate and display the streaming response
+    # Phase 2: Generate follow-up questions
+    
+    # If we're in phase 2 (waiting for follow-up generation after displaying response)
+    if st.session_state.waiting_for_followup:
+        with st.spinner("Generating follow-up questions..."):
+            # Get the latest response from the conversation history
+            latest_response = st.session_state.messages[-1]["content"]
+            follow_up_questions = generate_follow_up_questions(latest_response)
+            st.session_state.follow_up_questions = follow_up_questions
+            
+            # Reset the waiting flag and selected follow-up
+            st.session_state.waiting_for_followup = False
+            st.session_state.loading = False
+            st.session_state.selected_follow_up = None
+            st.session_state.is_streaming = False
+        return
+        
+    # Otherwise, we're in phase 1: process the input and generate a streaming response
+    st.session_state.loading = True
+    st.session_state.is_streaming = True
+    
+    # Add the user message to the conversation history first
+    st.session_state.messages.append({"role": "user", "content": user_input})
+    
+    # Display the user message
+    with st.chat_message("user"):
+        st.write(user_input)
+    
+    # Show spinner while preparing the streaming response
+    with st.spinner("AI Assistant is thinking..."):
+        # Get both the streaming generator and metadata from companion
+        stream_generator, metadata = st.session_state.companion.process_message_stream(user_input)
+    
+    # Create the assistant message container
+    with st.chat_message("assistant"):
+        try:
+            # Use Streamlit's streaming capability
+            streamed_text = st.write_stream(stream_generator)
+            
+            # Fix spacing issues in revenue text formatting
+            full_response = fix_revenue_text_spacing(streamed_text)
+            
+            # Clean markdown formatting that doesn't render well
+            full_response = clean_markdown_formatting(full_response)
+            
+        except Exception as e:
+            st.error(f"Error during streaming: {str(e)}")
+            full_response = f"I encountered an error while generating my response: {str(e)}"
+            metadata = {"data_analysis": None}
+        
+        # Display data analysis results immediately if available
+        data_analysis = metadata.get("data_analysis")
+        if data_analysis:
+            st.subheader("Data Analysis Results")
+            
+            # Convert list of dictionaries to DataFrame for display
+            try:
+                df = pd.DataFrame(data_analysis.get("results", []))
+                
+                if not df.empty:
+                    # Set row indices to start from 1
+                    df.index = np.arange(1, len(df) + 1)
+                    
+                    # Format and display the data
+                    formatted_df = format_numeric_values(df)
+                    st.dataframe(formatted_df, use_container_width=True)
+                    
+                    # Show query metadata
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Rows Returned", data_analysis.get("row_count", len(df)))
+                    with col2:
+                        st.metric("Execution Time", f"{data_analysis.get('execution_time_ms', 0)}ms")
+                    with col3:
+                        st.metric("Columns", len(df.columns))
+                    
+                    # Show the SQL query used
+                    if data_analysis.get("sql"):
+                        with st.expander("SQL Query"):
+                            st.code(data_analysis.get("sql"), language="sql")
+                    
+                    # Create visualization
+                    create_visualization(df)
+                else:
+                    st.info("Query executed successfully but returned no data.")
+                    
+            except Exception as e:
+                st.error(f"Error displaying data: {e}")
+                # Show raw data as fallback
+                with st.expander("Raw Data"):
+                    st.json(data_analysis.get("results", []))
+    
+    # Add the complete assistant response to the conversation history
+    assistant_message = {"role": "assistant", "content": full_response}
+    
+    # If we have data analysis results, store them in the message for display
+    if data_analysis:
+        assistant_message["data"] = data_analysis.get("results", [])
+        assistant_message["sql"] = data_analysis.get("sql", "")
+        assistant_message["row_count"] = data_analysis.get("row_count", 0)
+        assistant_message["execution_time"] = data_analysis.get("execution_time_ms", 0)
+    
+    st.session_state.messages.append(assistant_message)
+    
+    # Set flag to indicate we need to generate follow-up questions after rendering
+    st.session_state.waiting_for_followup = True
+    st.session_state.is_streaming = False
+    
+    # We need to rerun to render the response before generating follow-up questions
+    st.rerun()
+
 # Function to process user input with data analysis if enabled
 def process_input(user_input):
     # Phase 1: Generate and display the response
@@ -292,7 +419,11 @@ def process_input(user_input):
             st.session_state.selected_follow_up = None
         return
         
-    # Otherwise, we're in phase 1: process the input and generate a response
+    # Check if streaming is enabled, if so use streaming process
+    if st.session_state.streaming_enabled:
+        return process_input_stream(user_input)
+        
+    # Otherwise, we're in phase 1: process the input and generate a response (non-streaming)
     st.session_state.loading = True
     
     # Process the user input through the enhanced Companion (now includes data analysis)
@@ -395,6 +526,22 @@ with st.sidebar:
                 update_model(selected_model)
                 st.session_state.current_model = selected_model
                 st.success(f"Model switched to {selected_model}")
+        
+        # Streaming toggle
+        st.subheader("Response Settings")
+        streaming_enabled = st.toggle(
+            "🌊 Streaming Responses",
+            value=st.session_state.streaming_enabled,
+            help="Enable real-time streaming of AI responses for faster interaction"
+        )
+        
+        # Update streaming setting if changed
+        if streaming_enabled != st.session_state.streaming_enabled:
+            st.session_state.streaming_enabled = streaming_enabled
+            if streaming_enabled:
+                st.success("✅ Streaming mode enabled - responses will appear in real-time!")
+            else:
+                st.info("ℹ️ Streaming mode disabled - responses will appear all at once")
         
         st.divider()
         
@@ -574,54 +721,55 @@ if st.session_state.user_id:
         st.session_state.trigger_warm_start = False
         process_input(initial_prompt)
     
-    # Display chat messages
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            # Apply both text formatting functions to all displayed messages to ensure proper formatting
-            formatted_content = fix_revenue_text_spacing(message["content"])
-            formatted_content = clean_markdown_formatting(formatted_content)
-            st.write(formatted_content)
-            
-            # If this message has data attached, display it
-            if "data" in message and message["data"]:
-                st.subheader("Data Analysis Results")
+    # Display chat messages (skip if currently streaming to avoid duplication)
+    if not st.session_state.is_streaming:
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                # Apply both text formatting functions to all displayed messages to ensure proper formatting
+                formatted_content = fix_revenue_text_spacing(message["content"])
+                formatted_content = clean_markdown_formatting(formatted_content)
+                st.write(formatted_content)
                 
-                # Convert list of dictionaries to DataFrame for display
-                try:
-                    df = pd.DataFrame(message["data"])
+                # If this message has data attached, display it
+                if "data" in message and message["data"]:
+                    st.subheader("Data Analysis Results")
                     
-                    if not df.empty:
-                        # Set row indices to start from 1
-                        df.index = np.arange(1, len(df) + 1)
+                    # Convert list of dictionaries to DataFrame for display
+                    try:
+                        df = pd.DataFrame(message["data"])
                         
-                        # Format and display the data
-                        formatted_df = format_numeric_values(df)
-                        st.dataframe(formatted_df, use_container_width=True)
-                        
-                        # Show query metadata
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            st.metric("Rows Returned", message.get("row_count", len(df)))
-                        with col2:
-                            st.metric("Execution Time", f"{message.get('execution_time', 0)}ms")
-                        with col3:
-                            st.metric("Columns", len(df.columns))
-                        
-                        # Show the SQL query used
-                        if "sql" in message and message["sql"]:
-                            with st.expander("SQL Query"):
-                                st.code(message["sql"], language="sql")
-                        
-                        # Create visualization
-                        create_visualization(df)
-                    else:
-                        st.info("Query executed successfully but returned no data.")
-                        
-                except Exception as e:
-                    st.error(f"Error displaying data: {e}")
-                    # Show raw data as fallback
-                    with st.expander("Raw Data"):
-                        st.json(message["data"])
+                        if not df.empty:
+                            # Set row indices to start from 1
+                            df.index = np.arange(1, len(df) + 1)
+                            
+                            # Format and display the data
+                            formatted_df = format_numeric_values(df)
+                            st.dataframe(formatted_df, use_container_width=True)
+                            
+                            # Show query metadata
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.metric("Rows Returned", message.get("row_count", len(df)))
+                            with col2:
+                                st.metric("Execution Time", f"{message.get('execution_time', 0)}ms")
+                            with col3:
+                                st.metric("Columns", len(df.columns))
+                            
+                            # Show the SQL query used
+                            if "sql" in message and message["sql"]:
+                                with st.expander("SQL Query"):
+                                    st.code(message["sql"], language="sql")
+                            
+                            # Create visualization
+                            create_visualization(df)
+                        else:
+                            st.info("Query executed successfully but returned no data.")
+                            
+                    except Exception as e:
+                        st.error(f"Error displaying data: {e}")
+                        # Show raw data as fallback
+                        with st.expander("Raw Data"):
+                            st.json(message["data"])
     
     # Check if we need to process follow-up questions after displaying the response
     if st.session_state.waiting_for_followup:
@@ -642,9 +790,13 @@ if st.session_state.user_id:
     
     # Chat input area
     # Chat input
+    input_placeholder = "Ask me anything about business strategy or your data..."
+    if st.session_state.streaming_enabled:
+        input_placeholder += " (Streaming mode active 🌊)"
+    
     user_input = st.chat_input(
-        "Ask me anything about business strategy or your data...",
-        disabled=st.session_state.loading or not st.session_state.user_id or st.session_state.waiting_for_followup
+        input_placeholder,
+        disabled=st.session_state.loading or not st.session_state.user_id or st.session_state.waiting_for_followup or st.session_state.is_streaming
     )
     
     # Process input when submitted
@@ -652,9 +804,12 @@ if st.session_state.user_id:
         process_input(user_input)
         st.rerun()
     
-    # Loading indicator
-    if st.session_state.loading:
-        st.markdown("![Loading](https://i.gifer.com/ZKZx.gif)")
+    # Loading indicator with streaming awareness
+    if st.session_state.loading or st.session_state.is_streaming:
+        if st.session_state.is_streaming:
+            st.markdown("🌊 **Streaming response in real-time...**")
+        else:
+            st.markdown("![Loading](https://i.gifer.com/ZKZx.gif)")
 else:
     # Welcome message when no user is identified
     st.title("Welcome to Elevate AI Companion")

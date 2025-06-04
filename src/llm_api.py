@@ -97,4 +97,92 @@ class LlmApi:
         else:
             print("WARNING: Unexpected response structure. Full response:", result)
             # Return a fallback message
-            return "I apologize, but I encountered an issue with my response. Please try again or contact support." 
+            return "I apologize, but I encountered an issue with my response. Please try again or contact support."
+    
+    def generate_response_stream(self, user_message, user_memories, companion_memories, recent_conversation, max_tokens=DEFAULT_MAX_COMPLETION_TOKENS):
+        """
+        Generate a streaming response from the LLM.
+        
+        Args:
+            user_message: The user's message
+            user_memories: Memories related to the user
+            companion_memories: Memories from the companion
+            recent_conversation: Recent conversation history
+            max_tokens: Maximum number of tokens to generate in the response (default from config)
+            
+        Yields:
+            Chunks of the response as they arrive from the API
+        """
+        # Create the system prompt with all context
+        system_prompt = self.get_system_prompt(user_memories, companion_memories, recent_conversation)
+        
+        # Prepare the payload with streaming enabled
+        payload = {
+            "model": OPENROUTER_MODEL,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message}
+            ],
+            "max_tokens": max_tokens,
+            "stream": True  # Enable streaming
+        }
+        
+        print(f"\n🚀 Starting streaming response for model: {OPENROUTER_MODEL}")
+        
+        try:
+            # Make the streaming API call
+            with httpx.stream(
+                method="POST",
+                url=OPENROUTER_API_URL,
+                headers=self.headers,
+                json=payload,
+                timeout=API_TIMEOUT
+            ) as response:
+                response.raise_for_status()
+                
+                full_content = ""  # Keep track of full response for debugging
+                
+                # Process each chunk from the stream
+                for line in response.iter_lines():
+                    if line.strip():
+                        # Remove the "data: " prefix if present
+                        if line.startswith("data: "):
+                            data = line[6:]
+                        else:
+                            data = line
+                        
+                        # Skip empty lines and special markers
+                        if not data.strip() or data.strip() == "[DONE]":
+                            continue
+                        
+                        try:
+                            # Parse the JSON chunk
+                            chunk = json.loads(data)
+                            
+                            # Extract content from the chunk
+                            if "choices" in chunk and len(chunk["choices"]) > 0:
+                                delta = chunk["choices"][0].get("delta", {})
+                                content = delta.get("content", "")
+                                
+                                if content:
+                                    full_content += content
+                                    yield content
+                                    
+                        except json.JSONDecodeError as e:
+                            print(f"⚠️ Warning: Failed to parse JSON chunk: {data[:100]}... Error: {e}")
+                            continue
+                        except Exception as e:
+                            print(f"⚠️ Warning: Error processing chunk: {e}")
+                            continue
+                
+                print(f"✅ Streaming completed. Total content length: {len(full_content)} characters")
+                
+        except httpx.HTTPStatusError as e:
+            print(f"❌ HTTP error during streaming: {e}")
+            yield f"Error: HTTP {e.response.status_code} - {e.response.text}"
+        except httpx.TimeoutException:
+            print("❌ Timeout during streaming")
+            yield "Error: Request timed out. Please try again."
+        except Exception as e:
+            print(f"❌ Unexpected error during streaming: {e}")
+            yield f"Error: {str(e)}" 
