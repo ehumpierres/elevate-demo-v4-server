@@ -92,13 +92,13 @@ class Companion:
     to create a coherent conversation experience with database querying capabilities.
     """
     
-    def __init__(self, user_id, analyst_type="Sales Motion Strategy Agent", strict_memory=False):
+    def __init__(self, user_id, analyst_type="GTM Leadership Strategist", strict_memory=False):
         """
         Initialize the companion.
         
         Args:
             user_id: The ID of the user
-            analyst_type: The type of analyst to use (default: "Sales Motion Strategy Agent")
+            analyst_type: The type of analyst to use (default: "GTM Leadership Strategist")
             strict_memory: If True, fail if Mem0 is unavailable instead of using mock (default: False)
         """
         self.user_id = user_id

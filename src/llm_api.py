@@ -15,11 +15,12 @@ from config.config import (
 )
 from config.persona import get_system_prompt as get_arabella_prompt
 from config.motions_analyst import get_system_prompt as get_motions_analyst_prompt
+from config.GTM_leadership_strategist import get_system_prompt as get_gtm_leadership_prompt
 
 class LlmApi:
     """Handles interactions with the LLM API."""
     
-    def __init__(self, analyst_type="Arabella (Business Architect)"):
+    def __init__(self, analyst_type="GTM Leadership Strategist"):
         """
         Initialize the API connection.
         
@@ -35,6 +36,8 @@ class LlmApi:
         # Set the appropriate system prompt function based on analyst type
         if analyst_type == "Sales Motion Strategy Agent":
             self.get_system_prompt = get_motions_analyst_prompt
+        elif analyst_type == "GTM Leadership Strategist":
+            self.get_system_prompt = get_gtm_leadership_prompt
         else:  # Default to Arabella
             self.get_system_prompt = get_arabella_prompt
     

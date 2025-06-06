@@ -24,6 +24,7 @@ from src.llm_api import LlmApi
 # Import persona modules for analyst selection
 from config.persona import get_system_prompt as get_arabella_prompt
 from config.motions_analyst import get_system_prompt as get_motions_analyst_prompt
+from config.GTM_leadership_strategist import get_system_prompt as get_gtm_leadership_prompt
 
 # Import Vanna functionality for data analysis (now integrated into Companion)
 from src.ui.vanna_calls import (
@@ -71,7 +72,7 @@ if "last_user_input" not in st.session_state:
 
 # Add session state for analyst selection
 if "selected_analyst" not in st.session_state:
-    st.session_state.selected_analyst = "Sales Motion Strategy Agent"
+    st.session_state.selected_analyst = "GTM Leadership Strategist"
 
 # Add session state for streaming support
 if "streaming_enabled" not in st.session_state:
@@ -602,7 +603,7 @@ with st.sidebar:
         
         # Analyst selector
         st.subheader("AI Assistant")
-        analyst_options = ["Arabella (Business Architect)", "Sales Motion Strategy Agent"]
+        analyst_options = ["GTM Leadership Strategist", "Arabella (Business Architect)", "Sales Motion Strategy Agent"]
         selected_analyst = st.selectbox(
             "Select AI Assistant:",
             options=analyst_options,
